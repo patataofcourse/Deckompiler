@@ -6,4 +6,4 @@ def unpack(c00, outdir):
     pass
 
 if __name__ == "__main__":
-    tobtks(open("test_files/in.bin"), open("test_files/out.btk", "wb"))
+    tobtks(open("test_files/in.bin", "rb"), open("test_files/out.btk", "wb"))
