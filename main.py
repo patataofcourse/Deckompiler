@@ -15,7 +15,7 @@ def tobtks(tmbin, outfile, tempo=[]):
         if cmd == b"\xFF\xFF\xFF\xFF":
             amount = int.from_bytes(tmbin.read(4), "little")
             for _ in range(arg_count):
-                pass
+                pass #manage arg annotations
         tickflow += cmd
         arg_count = (int.from_bytes(cmd, "little") >> 10) & 0xF
         for _ in range(arg_count):
