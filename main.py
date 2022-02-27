@@ -7,7 +7,7 @@ def tobtks(tmbin, outfile, tempo=[]):
 
     # .bin tickflow loop or whatever
     # copied from tickompiler
-    ptro_section = []
+    pointers = []
     while True:
         cmd = tmbin.read(4)
         if cmd == b"\xFE\xFF\xFF\xFF":
@@ -31,15 +31,15 @@ def tobtks(tmbin, outfile, tempo=[]):
         for i in range(arg_count):
             arg = tmbin.read(4)
             if i in str_args:
-                ptro_section.append((len(tickflow), 0))
+                pointers.append((len(tickflow), 0))
             elif i in ptr_args:
-                ptro_section.append((len(tickflow), 1))
+                pointers.append((len(tickflow), 1))
             tickflow += arg
     strings = tmbin.read()
 
     stringpos = len(tickflow)
     # fix string pointers - stringpos, etc
-    for ptr in ptro_section:
+    for ptr in pointers:
         if ptr[1] != 0: continue
         str_ptr = int.from_bytes(tickflow[ptr[0]:ptr[0]+4], "little") - stringpos
         tickflow[ptr[0]:ptr[0]+4] = str_ptr.to_bytes(4, "little")
