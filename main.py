@@ -1,3 +1,5 @@
+import argparse
+
 def tobtks(tmbin, outfile, tempo=[]):
     #not needed- but nice to print for info purposes
     index = int.from_bytes(tmbin.read(4), "little")
@@ -121,5 +123,12 @@ def unpack(c00, outdir):
     pass
 
 if __name__ == "__main__":
-    tmbin = open("test_files/in.bin", "rb")
-    tobtks(tmbin, open("test_files/out.btk", "wb"))
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("in", help="the .bin file to convert")
+    parser.add_argument("out", help="the .btk file to export")
+    parser.add_argument("-t", "--tempo", help="a folder of tempo files to include (NOT IMPLEMENTED)")
+
+    args = parser.parse_args().__dict__
+
+    tobtks(open(args["in"], "rb"), open(args["out"], "wb"))
