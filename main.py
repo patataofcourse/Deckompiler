@@ -3,10 +3,11 @@ def tobtks(tmbin, outfile, tempo=[]):
     print(f"Index of file: {hex(index)}")
     start = int.from_bytes(tmbin.read(4), "little")
     tmbin.read(4) #Ignore assets sub
-    tickflow = b""
+    tickflow = bytearray(b"")
 
     # .bin tickflow loop or whatever
     # copied from tickompiler
+    ptro_section = []
     while True:
         cmd = tmbin.read(4)
         if cmd == b"\xFE\xFF\xFF\xFF":
@@ -19,25 +20,29 @@ def tobtks(tmbin, outfile, tempo=[]):
                 ann = tmbin.read(4)
                 anncode = ann[0]
                 ann_arg = int.from_bytes(ann[1:], "little")
-                if anncode in (0, 1): #TODO: manage tickflow vs string
-                    str_args.append(ann_arg)
-                elif anncode == 2:
+                if anncode == 0:
                     ptr_args.append(ann_arg)
+                elif anncode in (1, 2):
+                    str_args.append(ann_arg)
             cmd
             cmd = tmbin.read(4)
         tickflow += cmd
         arg_count = (int.from_bytes(cmd, "little") >> 10) & 0xF
         for i in range(arg_count):
             arg = tmbin.read(4)
-            #TODO: manage those
             if i in str_args:
-                print("string detected")
+                ptro_section.append((len(tickflow), 0))
             elif i in ptr_args:
-                print("pointer detected")
+                ptro_section.append((len(tickflow), 1))
             tickflow += arg
-    stringpos = tmbin.tell() - 12
-    print(hex(stringpos))
     strings = tmbin.read()
+
+    stringpos = len(tickflow)
+    # fix string pointers - stringpos, etc
+    for ptr in ptro_section:
+        if ptr[1] != 0: continue
+        str_ptr = int.from_bytes(tickflow[ptr[0]:ptr[0]+4], "little") - stringpos
+        tickflow[ptr[0]:ptr[0]+4] = str_ptr.to_bytes(4, "little")
     tmbin.close()
 
 
