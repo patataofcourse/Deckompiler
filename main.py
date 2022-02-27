@@ -51,52 +51,75 @@ def tobtks(tmbin, outfile, tempo=[]):
     # put everything into sections
     # 1. FLOW
     section_flow = {
-        magic: b"FLOW",
-        size: 0xC + len(tickflow),
-        start: start,
-        tickflow: tickflow
+        "magic": b"FLOW",
+        "size": 0xC + len(tickflow),
+        "start": start,
+        "tickflow": tickflow
     }
     # 2. PTRO
     ptrbin = b""
     for ptr in pointers:
         ptrbin += ptr[0].to_bytes(4, "little")
-        ptrbin += ptr[1]
+        ptrbin += bytes([ptr[1]])
     section_ptro = {
-        magic: b"PTRO",
-        size: 0xC + len(ptrbin),
-        ptr_amt: len(pointers),
-        pointers: ptrbin,
+        "magic": b"PTRO",
+        "size": 0xC + len(ptrbin),
+        "ptr_amt": len(pointers),
+        "pointers": ptrbin,
     }
     #TODO: 3. TMPO
     section_tmpo = None # in the future, only make it None if there's no tempos
     # 4. STRD
     section_strd = {
-        magic: b"STRD",
-        size: 0x8 + len(strings),
-        strings: strings
+        "magic": b"STRD",
+        "size": 0x8 + len(strings),
+        "strings": strings
     }
 
     #finally, the header!
     header = {
-        magic: b"BTKS",
-        size: 0x10 + section_flow["size"] + section_ptro["size"] + section_strd["size"],
-        version: 0, #this is rev0 of the BTKS spec
-        section_amt: 3 if section_tmpo == None else 4
+        "magic": b"BTKS",
+        "size": 0x10 + section_flow["size"] + section_ptro["size"] + section_strd["size"],
+        "version": 0, #this is rev0 of the BTKS spec
+        "section_amt": 3 if section_tmpo == None else 4
     }
 
     if section_tmpo != None:
-        header.size += section_tmpo["size"]
+        header["size"] += section_tmpo["size"]
 
-    #TODO: put everything into the outfile
+    #write to outfile, and we're done!
+
+    #header
+    outfile.write(header["magic"])
+    outfile.write(header["size"].to_bytes(4, "little"))
+    outfile.write(header["version"].to_bytes(4, "little"))
+    outfile.write(header["section_amt"].to_bytes(4, "little"))
+
+    #flow
+    outfile.write(section_flow["magic"])
+    outfile.write(section_flow["size"].to_bytes(4, "little"))
+    outfile.write(section_flow["start"].to_bytes(4, "little"))
+    outfile.write(section_flow["tickflow"])
+
+    #ptro
+    outfile.write(section_ptro["magic"])
+    outfile.write(section_ptro["size"].to_bytes(4, "little"))
+    outfile.write(section_ptro["ptr_amt"].to_bytes(4, "little"))
+    outfile.write(section_ptro["pointers"])
+
+    #TODO: tmpo
+
+    #strd
+    outfile.write(section_strd["magic"])
+    outfile.write(section_strd["size"].to_bytes(4, "little"))
+    outfile.write(section_strd["strings"])
+
+    outfile.close()
 
 
 def unpack(c00, outdir):
     pass
 
 if __name__ == "__main__":
-    try:
-        tmbin = open("test_files/in.bin", "rb")
-        tobtks(tmbin, open("test_files/out.btk", "wb"))
-    except Exception as e:
-        print(f"Exception in byte {hex(tmbin.tell())}:")
-        raise e
+    tmbin = open("test_files/in.bin", "rb")
+    tobtks(tmbin, open("test_files/out.btk", "wb"))
