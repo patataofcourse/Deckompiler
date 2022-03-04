@@ -141,17 +141,32 @@ def unpack(c00, outdir, base):
     #    (if they're greater than 0xC00000, then it's modded)
     games = []
     tempos = []
+    gates = []
     # Game table
-    for index in range(0x67):
+    for index in range(0x68):
         c00.read(4)
         start = int.from_bytes(c00.read(4), "little")
         assets = int.from_bytes(c00.read(4), "little")
         if start >= base:
-            games.append(index, start, assets)
+            games.append((index, start, assets))
         c00.read(0x28)
+    c00.read(0x68)
     # Tempo table
-    
+    for _ in range(0x1DD):
+        id1 = int.from_bytes(c00.read(4), "little")
+        id2 = int.from_bytes(c00.read(4), "little")
+        pos = int.from_bytes(c00.read(4), "little")
+        padding = int.from_bytes(c00.read(4), "little")
+        if pos >= base:
+            tempos.append((id1, id2, pos, padding))
     # Gate table
+    for index in range(0x10):
+        c00.read(4)
+        start = int.from_bytes(c00.read(4), "little")
+        assets = int.from_bytes(c00.read(4), "little")
+        if start >= base:
+            gates.append((index, start, assets))
+        c00.read(0x18)
 
     # Step 2 - Read and extract tickflow .bin-s
     
