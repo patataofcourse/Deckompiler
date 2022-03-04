@@ -120,6 +120,14 @@ def tobtks(tmbin, outfile, tempo=[]):
 
 
 def unpack(c00, outdir):
+    # Step 1 - Go through the base.bin tables and try to find the positions
+    #    (if they're greater than 0xC00000, then it's modded)
+
+    # Step 2 - Read and extract tickflow .bin-s
+    
+    # Step 3 - Read and extract .tempo-s
+
+    # Step 4 - profit
     pass
 
 if __name__ == "__main__":
