@@ -1,8 +1,5 @@
 import click
-
-@click.group(name="deckompiler")
-def cli():
-    pass
+from clistuff import cli, Int
 
 @cli.command(
     "binbtk",
@@ -138,9 +135,23 @@ def tobtks(tmbin, outfile, tempo=[]):
 )
 @click.argument("c00", type=click.File("rb"))
 @click.argument("outdir", type=click.Path())
-def unpack(c00, outdir):
+@click.option("-b", "--base", help="the base offset (defaults to 0xC000000)", type=Int(), default=0xC00000)
+def unpack(c00, outdir, base):
     # Step 1 - Go through the base.bin tables and try to find the positions
     #    (if they're greater than 0xC00000, then it's modded)
+    games = []
+    tempos = []
+    # Game table
+    for index in range(0x67):
+        c00.read(4)
+        start = int.from_bytes(c00.read(4), "little")
+        assets = int.from_bytes(c00.read(4), "little")
+        if start >= base:
+            games.append(index, start, assets)
+        c00.read(0x28)
+    # Tempo table
+    
+    # Gate table
 
     # Step 2 - Read and extract tickflow .bin-s
     
