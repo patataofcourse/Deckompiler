@@ -1,2 +1,4 @@
 # Deckompiler
-A tool for use with Tickompiler's binary formats
+A tool for use with Tickompiler's binary formats.
+
+Requires `click`.
