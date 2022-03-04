@@ -1,5 +1,17 @@
-import argparse
+import click
 
+@click.group(name="deckompiler")
+def cli():
+    pass
+
+@cli.command(
+    "binbtk",
+    help="Converts a Tickompiler .bin file to a Saltwater-compatible .btk",
+    no_args_is_help=True, options_metavar=""
+)
+@click.argument("tmbin", type=click.File("rb"), metavar="IN")
+@click.argument("outfile", type=click.File("wb"), metavar="OUT")
+@click.argument("tempo", type=click.File("r"), nargs=-1, metavar="[TEMPO1] [TEMPO2] ...")
 def tobtks(tmbin, outfile, tempo=[]):
     #not needed- but nice to print for info purposes
     index = int.from_bytes(tmbin.read(4), "little")
@@ -119,6 +131,13 @@ def tobtks(tmbin, outfile, tempo=[]):
     outfile.close()
 
 
+@cli.command(
+    "unpack",
+    help="Unpacks a RHMPatch C00.bin file",
+    no_args_is_help=True, options_metavar=""
+)
+@click.argument("c00", type=click.File("rb"))
+@click.argument("outdir", type=click.Path())
 def unpack(c00, outdir):
     # Step 1 - Go through the base.bin tables and try to find the positions
     #    (if they're greater than 0xC00000, then it's modded)
@@ -131,12 +150,4 @@ def unpack(c00, outdir):
     pass
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("in", help="the .bin file to convert")
-    parser.add_argument("out", help="the .btk file to export")
-    parser.add_argument("-t", "--tempo", help="a folder of tempo files to include (NOT IMPLEMENTED)")
-
-    args = parser.parse_args().__dict__
-
-    tobtks(open(args["in"], "rb"), open(args["out"], "wb"))
+    cli()
