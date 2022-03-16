@@ -35,6 +35,6 @@ ASTRING_OPS = [
     StringOperation(TickflowCommand(0x68, 1), [1]),
     StringOperation(TickflowCommand(0xAF, 2), [2]),
     StringOperation(TickflowCommand(0xB5, 0), [0]),
-    StringOperation(TickflowCommand(0x105, 0), [], scene_id=0x0),
-    StringOperation(TickflowCommand(0x10B, 0), [], scene_id=0x0),
+    StringOperation(TickflowCommand(0x105, 0), [0], scene_id=0x1),
+    StringOperation(TickflowCommand(0x10B, 0), [0], scene_id=0x2C),
 ]
