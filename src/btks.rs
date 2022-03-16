@@ -57,8 +57,8 @@ impl BTKS {
             if cmd == 0xFFFFFFFE { // 0xFFFFFFFE (-2) indicates start of string data
                 break
             }
-            let str_args = vec![]; //strings and tickflow pointers have to be stored separately
-            let ptr_args = vec![]; //because they're managed differently in btks
+            let mut str_args = vec![]; //strings and tickflow pointers have to be stored separately
+            let mut ptr_args = vec![]; //because they're managed differently in btks
             if cmd == 0xFFFFFFFF { // 0xFFFFFFFF (-1) indicates an 'args' section
                 let amount = u32::read_from(f, ByteOrder::LittleEndian)?;
                 for _ in 0..amount {
