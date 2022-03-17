@@ -1,44 +1,60 @@
-use bytestream::{ByteOrder, StreamReader};
+use bytestream::{ByteOrder, StreamReader, StreamWriter};
 use std::io::{self, Read, Seek, Write};
 
-#[derive(Debug)]
-pub struct BTKS(Vec<Section>);
+#[derive(Debug, Clone)]
+pub struct BTKS {
+    flow: FlowSection,
+    ptro: Option<Vec<Pointer>>,
+    tmpo: Option<Vec<Tempo>>,
+    strd: Option<Vec<u8>>,
+}
 
 impl BTKS {
     const REVISION: u32 = 0;
+    const HEADER_SIZE: u32 = 0x10;
+    const FLOW_HEADER: u32 = 0xC;
+    const PTRO_HEADER: u32 = 0xC;
+    //const TMPO_HEADER: u32 = 0x8; //TODO
+    const STRD_HEADER: u32 = 0x8;
 }
 
-#[derive(Debug)]
-pub enum Section {
-    FlowSection {
-        start_offset: u32,
-        tickflow_data: Vec<u8>,
-    },
-    PtroSection(Vec<Pointer>),
-    TmpoSection(Vec<Tempo>),
-    StrdSection(Vec<u8>),
+#[derive(Debug, Clone)]
+pub struct FlowSection {
+    start_offset: u32,
+    tickflow_data: Vec<u8>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Pointer {
     offset: u32,
     ptype: PointerType,
 }
 
-#[derive(Debug)]
+impl Pointer {
+    pub fn to_bin(&self) -> [u8; 5] {
+        let mut out = [0; 5];
+        for i in 0..4 {
+            out[i] = self.offset.to_le_bytes()[i];
+        }
+        out[4] = self.ptype.clone() as u8;
+        out
+    }
+}
+
+#[derive(Debug, Clone)]
 #[repr(u8)]
 pub enum PointerType {
     String,
     Tickflow,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tempo {
     id: u32,
     data: Vec<TempoVal>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TempoVal {
     beats: u32,
     time: u32, //NOT SECONDS
@@ -107,7 +123,6 @@ impl BTKS {
                 for i in 0..4 {
                     ptr_bytes[i] = tickflow[ptr.offset as usize + i];
                 }
-                println!("{:?}", ptr_bytes);
                 let str_ptr = (u32::from_le_bytes(ptr_bytes) - stringpos as u32).to_le_bytes();
                 for i in 0..4 {
                     tickflow[ptr.offset as usize + i] = str_ptr[i];
@@ -115,36 +130,60 @@ impl BTKS {
             }
         }
 
-        let section_flow = Section::FlowSection {
+        let section_flow = FlowSection {
             start_offset: start,
             tickflow_data: tickflow,
         };
-        let section_ptro = Section::PtroSection(pointers);
-        let section_tmpo = None; //TODO: in the future, only make it None if there's no tempos
-        let section_strd = Section::StrdSection(strings);
-        let mut btks = Self(vec![section_flow, section_ptro]);
-        match section_tmpo {
-            Some(c) => btks.0.push(c),
-            None => (),
-        }
-        btks.0.push(section_strd);
-        println!("{:#?}", btks);
-        return Ok(btks);
+        let pointers = match pointers.len() {
+            0 => None,
+            _ => Some(pointers),
+        };
+        let strings = match strings.len() {
+            0 => None,
+            _ => Some(strings), // TODO: maybe tickompiler doesn't add the 0xFFFFFFFE
+                                // if there's no strings???
+        };
+        return Ok(Self {
+            flow: section_flow,
+            ptro: pointers,
+            tmpo: None, //TODO: in the future, only make it None if there's no tempos
+            strd: strings,
+        });
     }
 
     pub fn to_btks_file<F: Write>(&self, f: &mut F) -> io::Result<()> {
-        /*
-            //header
-            outfile.write(header["magic"])
-            outfile.write(header["size"].to_bytes(4, "little"))
-            outfile.write(header["version"].to_bytes(4, "little"))
-            outfile.write(header["section_amt"].to_bytes(4, "little"))
+        // ------------
+        //    Header
+        // ------------
+        f.write(b"BTKS")?; //magic
+        let mut size = Self::HEADER_SIZE + Self::FLOW_HEADER + self.flow.tickflow_data.len() as u32;
+        let mut num_sections = 1;
+        //TODO: will probably have to retroactively write size and num_sections
+        if let Some(c) = &self.ptro {
+            size += Self::PTRO_HEADER + c.len() as u32 * 5;
+            num_sections += 1;
+        }
+        //TODO: TMPO
+        if let Some(c) = &self.strd {
+            size += Self::STRD_HEADER + c.len() as u32;
+            num_sections += 1;
+        }
+        size.write_to(f, ByteOrder::LittleEndian)?;
+        Self::REVISION.write_to(f, ByteOrder::LittleEndian)?;
+        num_sections.write_to(f, ByteOrder::LittleEndian)?;
 
-            //flow
-            outfile.write(section_flow["magic"])
-            outfile.write(section_flow["size"].to_bytes(4, "little"))
-            outfile.write(section_flow["start"].to_bytes(4, "little"))
-            outfile.write(section_flow["tickflow"])
+        // ----------
+        //    FLOW
+        // ----------
+        f.write(b"FLOW")?; //magic
+        let size = Self::FLOW_HEADER + self.flow.tickflow_data.len() as u32;
+        size.write_to(f, ByteOrder::LittleEndian)?;
+        self.flow
+            .start_offset
+            .write_to(f, ByteOrder::LittleEndian)?;
+        f.write(&self.flow.tickflow_data)?;
+
+        /*
 
             //ptro
             outfile.write(section_ptro["magic"])
