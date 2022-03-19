@@ -1,5 +1,5 @@
 use bytestream::{ByteOrder, StreamReader, StreamWriter};
-use std::io::{self, Read, Seek, Write};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 
 #[derive(Debug, Clone)]
 pub struct BTKS {
@@ -151,55 +151,66 @@ impl BTKS {
         });
     }
 
-    pub fn to_btks_file<F: Write>(&self, f: &mut F) -> io::Result<()> {
+    pub fn to_btks_file<F: Write + Seek>(&self, f: &mut F) -> io::Result<()> {
         // ------------
         //    Header
         // ------------
         f.write(b"BTKS")?; //magic
-        let mut size = Self::HEADER_SIZE + Self::FLOW_HEADER + self.flow.tickflow_data.len() as u32;
+        let mut size = Self::HEADER_SIZE;
         let mut num_sections = 1;
-        //TODO: will probably have to retroactively write size and num_sections
-        if let Some(c) = &self.ptro {
-            size += Self::PTRO_HEADER + c.len() as u32 * 5;
-            num_sections += 1;
-        }
-        //TODO: TMPO
-        if let Some(c) = &self.strd {
-            size += Self::STRD_HEADER + c.len() as u32;
-            num_sections += 1;
-        }
-        size.write_to(f, ByteOrder::LittleEndian)?;
+        let size_pos = f.stream_position()?;
+        0u32.write_to(f, ByteOrder::LittleEndian)?;
         Self::REVISION.write_to(f, ByteOrder::LittleEndian)?;
-        num_sections.write_to(f, ByteOrder::LittleEndian)?;
+        let num_sections_pos = f.stream_position()?;
+        0u32.write_to(f, ByteOrder::LittleEndian)?;
 
         // ----------
         //    FLOW
         // ----------
         f.write(b"FLOW")?; //magic
-        let size = Self::FLOW_HEADER + self.flow.tickflow_data.len() as u32;
-        size.write_to(f, ByteOrder::LittleEndian)?;
+        let flow_size = Self::FLOW_HEADER + self.flow.tickflow_data.len() as u32;
+        size += flow_size;
+        flow_size.write_to(f, ByteOrder::LittleEndian)?;
         self.flow
             .start_offset
             .write_to(f, ByteOrder::LittleEndian)?;
         f.write(&self.flow.tickflow_data)?;
 
-        /*
+        // ----------
+        //    PTRO
+        // ----------
+        if let Some(c) = &self.ptro {
+            num_sections += 1;
+            f.write(b"PTRO")?; //magic
+            let ptro_size: u32 = Self::STRD_HEADER + c.len() as u32 * 5;
+            size += ptro_size;
+            ptro_size.write_to(f, ByteOrder::LittleEndian)?;
+            (c.len() as u32).write_to(f, ByteOrder::LittleEndian)?;
+            for pointer in c {
+                f.write(&pointer.to_bin())?;
+            }
+        }
 
-            //ptro
-            outfile.write(section_ptro["magic"])
-            outfile.write(section_ptro["size"].to_bytes(4, "little"))
-            outfile.write(section_ptro["ptr_amt"].to_bytes(4, "little"))
-            outfile.write(section_ptro["pointers"])
+        //TODO: tmpo
 
-            //TODO: tmpo
+        // ----------
+        //    STRD
+        // ----------
+        if let Some(c) = &self.strd {
+            num_sections += 1;
+            f.write(b"STRD")?; //magic
+            let strd_size: u32 = Self::PTRO_HEADER + c.len() as u32;
+            size += strd_size;
+            strd_size.write_to(f, ByteOrder::LittleEndian)?;
+            f.write(&c)?;
+        }
 
-            //strd
-            outfile.write(section_strd["magic"])
-            outfile.write(section_strd["size"].to_bytes(4, "little"))
-            outfile.write(section_strd["strings"])
+        // Write filesize and number of sections
+        f.seek(SeekFrom::Start(size_pos))?;
+        size.write_to(f, ByteOrder::LittleEndian)?;
+        f.seek(SeekFrom::Start(num_sections_pos))?;
+        num_sections.write_to(f, ByteOrder::LittleEndian)?;
 
-            outfile.close()
-        */
-        unimplemented!();
+        Ok(())
     }
 }
