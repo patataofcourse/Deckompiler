@@ -1,15 +1,18 @@
 use crate::common::Tempo;
 use std::io::{Read, Result as IOResult, Seek};
 
+pub mod string;
+
 #[derive(Debug)]
 pub struct C00Bin {
     pub c00_type: C00Type,
-    pub base_patch: Patch,
+    pub base_patch: Patch, //TODO: IPS??? custom format??? to be decided
     pub tickflows: Vec<TickompilerBinary>,
     pub tempos: Vec<Tempo>,
 }
 
-#[derive(Debug, Clone)] //TODO: IPS??? custom format??? to be decided
+//stub
+#[derive(Debug, Clone)]
 pub struct Patch;
 
 #[derive(Debug, Clone)]
