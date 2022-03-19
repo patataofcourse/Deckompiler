@@ -29,27 +29,29 @@ macro_rules! str_op {
     };
 }
 
-pub const STRING_OPS: Vec<StringOperation> = vec![
-    str_op!(0x31, vec![1], is_unicode = true),
-    str_op!(0x35, vec![1], is_unicode = true),
-    str_op!(0x39, vec![1], is_unicode = true),
-    str_op!(0x3B, vec![2]),
-    str_op!(0x3E, vec![1], is_unicode = true),
-    str_op!(0x5D, vec![1], is_unicode = true),
-    str_op!(0x5D<2>, vec![0], is_unicode = true),
-    str_op!(0x61<2>, vec![0], is_unicode = true),
-    str_op!(0x65<1>, vec![1]),
-    str_op!(0x66, vec![1]),
-    str_op!(0x67<1>, vec![1]),
-    str_op!(0x68<1>, vec![1]),
-    str_op!(0x93, vec![2, 3]),
-    str_op!(0x94, vec![1, 2, 3]),
-    str_op!(0x95, vec![1]),
-    str_op!(0xAF<2>, vec![2]),
-    str_op!(0xB0<4>, vec![1]),
-    str_op!(0xB0<5>, vec![1]),
-    str_op!(0xB0<6>, vec![1]),
-    str_op!(0xB5, vec![0]),
-    str_op!(0x105, vec![0], 1),
-    str_op!(0x10B, vec![0], 0x2C),
-];
+pub fn string_ops() -> Vec<StringOperation> {
+    vec![
+        str_op!(0x31, vec![1], is_unicode = true),
+        str_op!(0x35, vec![1], is_unicode = true),
+        str_op!(0x39, vec![1], is_unicode = true),
+        str_op!(0x3B, vec![2]),
+        str_op!(0x3E, vec![1], is_unicode = true),
+        str_op!(0x5D, vec![1], is_unicode = true),
+        str_op!(0x5D<2>, vec![0], is_unicode = true),
+        str_op!(0x61<2>, vec![0], is_unicode = true),
+        str_op!(0x65<1>, vec![1]),
+        str_op!(0x66, vec![1]),
+        str_op!(0x67<1>, vec![1]),
+        str_op!(0x68<1>, vec![1]),
+        str_op!(0x93, vec![2, 3]),
+        str_op!(0x94, vec![1, 2, 3]),
+        str_op!(0x95, vec![1]),
+        str_op!(0xAF<2>, vec![2]),
+        str_op!(0xB0<4>, vec![1]),
+        str_op!(0xB0<5>, vec![1]),
+        str_op!(0xB0<6>, vec![1]),
+        str_op!(0xB5, vec![0]),
+        str_op!(0x105, vec![0], 1),
+        str_op!(0x10B, vec![0], 0x2C),
+    ]
+}
