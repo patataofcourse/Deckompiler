@@ -1,6 +1,7 @@
 use crate::common::Tempo;
 use std::io::{Read, Result as IOResult, Seek};
 
+pub mod constants;
 pub mod string;
 
 #[derive(Debug)]
