@@ -182,7 +182,7 @@ impl BTKS {
         if let Some(c) = &self.ptro {
             num_sections += 1;
             f.write(b"PTRO")?; //magic
-            let ptro_size: u32 = Self::STRD_HEADER + c.len() as u32 * 5;
+            let ptro_size: u32 = Self::PTRO_HEADER + c.len() as u32 * 5;
             size += ptro_size;
             ptro_size.write_to(f, ByteOrder::LittleEndian)?;
             (c.len() as u32).write_to(f, ByteOrder::LittleEndian)?;
@@ -199,7 +199,7 @@ impl BTKS {
         if let Some(c) = &self.strd {
             num_sections += 1;
             f.write(b"STRD")?; //magic
-            let strd_size: u32 = Self::PTRO_HEADER + c.len() as u32;
+            let strd_size: u32 = Self::STRD_HEADER + c.len() as u32;
             size += strd_size;
             strd_size.write_to(f, ByteOrder::LittleEndian)?;
             f.write(&c)?;
