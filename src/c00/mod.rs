@@ -25,6 +25,15 @@ pub enum C00Type {
     SaltwaterKR,
 }
 
+impl C00Type {
+    pub fn base_offset(&self) -> u32 {
+        match self {
+            Self::RHMPatch => 0xC0000000,
+            _ => panic!("Saltwater base offset not implemented"), //TODO
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TickompilerBinary {
     pub index: u32,
@@ -34,8 +43,61 @@ pub struct TickompilerBinary {
 }
 
 impl C00Bin {
+    pub fn base_offset(&self) -> u32 {
+        self.c00_type.base_offset()
+    }
+
     pub fn from_file<F: Read + Seek>(file: &mut F) -> IOResult<Self> {
         unimplemented!();
+        /*
+        # Step 1 - Go through the base.bin tables and try to find the positions
+        #    (if they're greater than 0x550000, then it's modded)
+        games = []
+        tempos = []
+        # Game table
+        for index in range(0x68):
+            c00.read(4)
+            start = int.from_bytes(c00.read(4), "little")
+            assets = int.from_bytes(c00.read(4), "little")
+            if start >= base:
+                games.append((index, start, assets))
+            c00.read(0x28)
+        c00.read(0x68)
+        # Tempo table
+        for _ in range(0x1DD):
+            id1 = int.from_bytes(c00.read(4), "little")
+            id2 = int.from_bytes(c00.read(4), "little")
+            pos = int.from_bytes(c00.read(4), "little")
+            padding = int.from_bytes(c00.read(4), "little")
+            if pos >= base:
+                tempos.append((id1, id2, pos, padding))
+        # Gate table
+        for index in range(0x10):
+            c00.read(4)
+            start = int.from_bytes(c00.read(4), "little")
+            assets = int.from_bytes(c00.read(4), "little")
+            if start >= base:
+                games.append((0x100+index, start, assets))
+            c00.read(0x18)
+
+        c00.seek(0)
+        c00 = c00.read()
+        try:
+            os.makedirs(outdir)
+        except FileExistsError:
+            pass
+
+        # Step 2 - Read and extract tickflow .bin-s
+        for game in games:
+            is_gate = game[0] >= 0x100
+            if is_gate: game[0] -= 0x100
+            name = names["tickflowEndless" if is_gate else "tickflow"][game[0]] + ".bin"
+        #now we gotta copy a bunch of shit from tickompiler
+
+        # Step 3 - Read and extract .tempo-s
+
+        # Step 4 - profit
+        */
     }
 }
 
