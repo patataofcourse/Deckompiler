@@ -38,8 +38,13 @@ impl C00Bin {
 impl TickompilerBinary {}
 
 impl Tempo {
-    pub fn to_tickompiler_file(&self) -> ! {
-        // TODO: what kind of result?
-        unimplemented!();
+    pub fn to_tickompiler_file(&self) -> String {
+        let mut out = format!("{}\n", self.id);
+        for val in &self.data {
+            let seconds = val.time as f64 * 1000.0;
+            let bpm = val.beats as f64 / seconds * 60.0;
+            out += &format!("{:#.3} {:#.3} {}", bpm, seconds, val.loop_val);
+        }
+        out
     }
 }

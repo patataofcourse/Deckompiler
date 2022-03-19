@@ -1,12 +1,12 @@
 #[derive(Debug, Clone)]
 pub struct Tempo {
-    id: u32,
-    data: Vec<TempoVal>,
+    pub id: u32,
+    pub data: Vec<TempoVal>,
 }
 
 #[derive(Debug, Clone)]
 pub struct TempoVal {
-    beats: u32,
-    time: u32, //NOT SECONDS
-    loop_val: u32,
+    pub beats: u32,
+    pub time: u32, // in 32000ths of a second
+    pub loop_val: u32,
 }
