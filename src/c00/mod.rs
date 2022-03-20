@@ -3,7 +3,7 @@ use bytestream::{ByteOrder, StreamReader, StreamWriter};
 use std::io::{Read, Result as IOResult, Seek, SeekFrom, Write};
 
 pub mod constants;
-pub mod string;
+pub mod operations;
 
 #[derive(Debug)]
 pub struct C00Bin {
@@ -114,7 +114,12 @@ impl C00Bin {
             } else {
                 constants::NAME_TICKFLOW[game.index as usize]
             };
-            //now we gotta copy a bunch of shit from tickompiler
+            let mut queue = vec![(game.start, 0xFF), (game.assets, 0xFF)];
+            let mut bindata = vec![];
+            while queue.len() != 0 {
+                extract_tickflow(file, queue[0].0, &mut bindata)?;
+                queue.remove(0);
+            }
         }
 
         // Step 3 - Read and extract .tempo-s
@@ -123,6 +128,20 @@ impl C00Bin {
 
         unimplemented!();
     }
+}
+
+/// Equivalent to Tickompiler's firstPass
+pub fn extract_tickflow<F: Read + Seek>(
+    file: &mut F,
+    position: u32,
+    bindata: &mut Vec<u8>,
+) -> IOResult<()> {
+    loop {
+        let op_int = u32::read_from(file, ByteOrder::LittleEndian)?;
+        let arg_count = (op_int & 0x3C00 >> 10) as u8;
+        //TODO
+    }
+    Ok(())
 }
 
 impl TickompilerBinary {
