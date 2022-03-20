@@ -1,5 +1,6 @@
 use crate::common::Tempo;
-use std::io::{Read, Result as IOResult, Seek};
+use bytestream::{ByteOrder, StreamReader, StreamWriter};
+use std::io::{Read, Result as IOResult, Seek, SeekFrom, Write};
 
 pub mod constants;
 pub mod string;
@@ -42,66 +43,97 @@ pub struct TickompilerBinary {
     pub data: Vec<u8>,
 }
 
+#[derive(Debug, Clone)]
+pub struct TempoTable {
+    pub id1: u32,
+    pub id2: u32,
+    pub pos: u32,
+}
+
 impl C00Bin {
     pub fn base_offset(&self) -> u32 {
         self.c00_type.base_offset()
     }
 
     pub fn from_file<F: Read + Seek>(file: &mut F) -> IOResult<Self> {
+        let mut edited_games = vec![];
+        let mut edited_tempos = vec![];
+
+        //TODO: detect base.bin patches
+
+        // Step 1 - Go through the base.bin tables and try to find the positions
+        //    (if they're greater than 0x550000, then it's modded)
+
+        //game table
+        for i in 0..0x68 {
+            file.seek(SeekFrom::Current(4))?;
+            let start = u32::read_from(file, ByteOrder::LittleEndian)?;
+            if start >= 0x550000 {
+                edited_games.push(TickompilerBinary {
+                    index: i,
+                    start,
+                    assets: u32::read_from(file, ByteOrder::LittleEndian)?,
+                    data: vec![],
+                });
+            }
+            file.seek(SeekFrom::Current(0x28))?;
+        }
+        file.seek(SeekFrom::Current(0x68))?; // This Shit Should Not Be In Base Dot Bin
+
+        //tempo table
+        for _ in 0..0x1DD {
+            let id1 = u32::read_from(file, ByteOrder::LittleEndian)?;
+            let id2 = u32::read_from(file, ByteOrder::LittleEndian)?;
+            let pos = u32::read_from(file, ByteOrder::LittleEndian)?;
+            u32::read_from(file, ByteOrder::LittleEndian)?; // padding
+            if pos >= 0x550000 {
+                edited_tempos.push(TempoTable { id1, id2, pos });
+            }
+        }
+
+        //gate table
+        for i in 0x100..0x110 {
+            file.seek(SeekFrom::Current(4))?;
+            let start = u32::read_from(file, ByteOrder::LittleEndian)?;
+            if start >= 0x550000 {
+                edited_games.push(TickompilerBinary {
+                    index: i,
+                    start,
+                    assets: u32::read_from(file, ByteOrder::LittleEndian)?,
+                    data: vec![],
+                });
+            }
+            file.seek(SeekFrom::Current(0x18))?;
+        }
+
+        // Step 2 - Read and extract tickflow .bin-s
+        for game in edited_games {
+            let is_gate = game.index >= 0x100;
+            let name = if is_gate {
+                constants::NAME_TICKFLOW_ENDLESS[game.index as usize - 0x100]
+            } else {
+                constants::NAME_TICKFLOW[game.index as usize]
+            };
+            //now we gotta copy a bunch of shit from tickompiler
+        }
+
+        // Step 3 - Read and extract .tempo-s
+
+        // Step 4 - profit
+
         unimplemented!();
-        /*
-        # Step 1 - Go through the base.bin tables and try to find the positions
-        #    (if they're greater than 0x550000, then it's modded)
-        games = []
-        tempos = []
-        # Game table
-        for index in range(0x68):
-            c00.read(4)
-            start = int.from_bytes(c00.read(4), "little")
-            assets = int.from_bytes(c00.read(4), "little")
-            if start >= base:
-                games.append((index, start, assets))
-            c00.read(0x28)
-        c00.read(0x68)
-        # Tempo table
-        for _ in range(0x1DD):
-            id1 = int.from_bytes(c00.read(4), "little")
-            id2 = int.from_bytes(c00.read(4), "little")
-            pos = int.from_bytes(c00.read(4), "little")
-            padding = int.from_bytes(c00.read(4), "little")
-            if pos >= base:
-                tempos.append((id1, id2, pos, padding))
-        # Gate table
-        for index in range(0x10):
-            c00.read(4)
-            start = int.from_bytes(c00.read(4), "little")
-            assets = int.from_bytes(c00.read(4), "little")
-            if start >= base:
-                games.append((0x100+index, start, assets))
-            c00.read(0x18)
-
-        c00.seek(0)
-        c00 = c00.read()
-        try:
-            os.makedirs(outdir)
-        except FileExistsError:
-            pass
-
-        # Step 2 - Read and extract tickflow .bin-s
-        for game in games:
-            is_gate = game[0] >= 0x100
-            if is_gate: game[0] -= 0x100
-            name = names["tickflowEndless" if is_gate else "tickflow"][game[0]] + ".bin"
-        #now we gotta copy a bunch of shit from tickompiler
-
-        # Step 3 - Read and extract .tempo-s
-
-        # Step 4 - profit
-        */
     }
 }
 
-impl TickompilerBinary {}
+impl TickompilerBinary {
+    pub fn to_file<F: Write>(&self, file: &mut F) -> IOResult<()> {
+        self.index.write_to(file, ByteOrder::LittleEndian)?;
+        self.start.write_to(file, ByteOrder::LittleEndian)?;
+        self.assets.write_to(file, ByteOrder::LittleEndian)?;
+        file.write(&self.data)?;
+        Ok(())
+    }
+}
 
 impl Tempo {
     pub fn to_tickompiler_file(&self) -> String {

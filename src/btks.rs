@@ -54,8 +54,9 @@ impl BTKS {
         //not needed- but nice to print for info purposes
         let index = u32::read_from(f, ByteOrder::LittleEndian)?;
         println!("Index of file: {:#X}", index);
+
         let start = u32::read_from(f, ByteOrder::LittleEndian)?;
-        u32::read_from(f, ByteOrder::LittleEndian)?; //Ignore assets sub
+        u32::read_from(f, ByteOrder::LittleEndian)?; //Ignore assets sub  //TODO: check if index is a gate game - split the gate game file
         let mut tickflow = vec![];
         // .bin tickflow loop or whatever
         // copied from tickompiler, modified to export to btks
