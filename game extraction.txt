@@ -1,0 +1,16 @@
+game extraction
+
+- queue of positions to start reading from
+- when a string operation is found, interpret its argument as a string
+    - store strings separately
+    - store the positions where string pointers are and run through them after everything, also adding an arg annotation
+    - append strings to game data
+    - extract .bin
+- something similar with tickflow pointers
+    - except the tickflow at those positions also has to be extracted -> add to queue
+- engine switching
+    - mainly so i can keep track of if the command is string pointer or not
+- detecting when to return
+    - if/switch commands add "depth", while the end commands remove it
+    - if depth is 0 and return/stop are found, end
+    - if depth > 0, but the next command is NOT else/endif/case/endswitch, also end (fixes a bug tickompiler has with Fillbots)
