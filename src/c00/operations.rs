@@ -1,9 +1,11 @@
 pub struct TickflowOp {
-    pub is_unicode: bool,
-    pub command: u32, // Following the tickflow bytecode specifications
+    pub is_unicode: bool, // To be used with string operations
+    pub command: u32,     // Following the tickflow bytecode specifications
     pub args: Vec<u8>,
     pub scene: Option<u32>,
 }
+
+const OPCODE_MASK: u32 = 0xFFFFC3FF;
 
 #[macro_export]
 macro_rules! tf_op_args {
@@ -56,12 +58,24 @@ pub fn string_ops() -> Vec<TickflowOp> {
     ]
 }
 
-pub fn is_string_op(op: u32) -> Option<TickflowOp> {
-    unimplemented!(); //TODO
+pub fn is_string_op(opcode: u32) -> Option<TickflowOp> {
+    let opcode = opcode & OPCODE_MASK;
+    for op in string_ops() {
+        if op.command == opcode {
+            return Some(op);
+        }
+    }
+    None
 }
 
-pub fn scene_op() -> TickflowOp {
-    tf_op_args!(0x28, vec![0])
+pub const SCENE_OP: u32 = 0x28; //no arg0
+
+pub fn is_scene_op(op: u32) -> bool {
+    if SCENE_OP == op & OPCODE_MASK {
+        true
+    } else {
+        false
+    }
 }
 
 pub fn call_ops() -> Vec<TickflowOp> {
@@ -71,3 +85,15 @@ pub fn call_ops() -> Vec<TickflowOp> {
         tf_op_args!(0x6, vec![0]),
     ]
 }
+
+pub fn is_call_op(opcode: u32) -> Option<TickflowOp> {
+    let opcode = opcode & OPCODE_MASK;
+    for op in call_ops() {
+        if op.command == opcode {
+            return Some(op);
+        }
+    }
+    None
+}
+
+//TODO: depth ops, undepth ops, return ops
