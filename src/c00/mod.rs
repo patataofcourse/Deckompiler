@@ -27,10 +27,12 @@ pub enum C00Type {
 }
 
 impl C00Type {
-    pub fn base_offset(&self) -> u64 {
+    pub fn base_offset(&self) -> u32 {
         match self {
-            Self::RHMPatch => 0xC0000000,
-            _ => panic!("Saltwater base offset not implemented"), //TODO
+            Self::RHMPatch => 0x0C000000,
+            Self::SaltwaterUS | Self::SaltwaterEU | Self::SaltwaterJP | Self::SaltwaterKR => {
+                0x060A9008
+            }
         }
     }
 }
@@ -51,7 +53,7 @@ pub struct TempoTable {
 }
 
 impl C00Bin {
-    pub fn base_offset(&self) -> u64 {
+    pub fn base_offset(&self) -> u32 {
         self.c00_type.base_offset()
     }
 
@@ -140,7 +142,9 @@ pub fn extract_tickflow<F: Read + Seek>(
     stringdata: &mut Vec<u8>,
 ) -> IOResult<()> {
     let mut scene = queue[0].1;
-    file.seek(SeekFrom::Start(queue[0].0 as u64 - c00_type.base_offset()))?;
+    file.seek(SeekFrom::Start(
+        queue[0].0 as u64 - c00_type.base_offset() as u64,
+    ))?;
     loop {
         let op_int = u32::read_from(file, ByteOrder::LittleEndian)?;
         let arg_count = (op_int & 0x3C00 >> 10) as u8;
@@ -177,7 +181,7 @@ pub fn read_string<F: Read + Seek>(
     is_unicode: bool,
 ) -> IOResult<Vec<u8>> {
     let og_pos = file.stream_position()?;
-    file.seek(SeekFrom::Start(pos - c00_type.base_offset()))?;
+    file.seek(SeekFrom::Start(pos - c00_type.base_offset() as u64))?;
     let mut string_data = vec![];
 
     if is_unicode {
