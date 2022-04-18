@@ -12,5 +12,4 @@ game extraction
     - mainly so i can keep track of if the command is string pointer or not
 - detecting when to return
     - if/switch commands add "depth", while the end commands remove it
-    - if depth is 0 and return/stop are found, end
-    - if depth > 0, but the next command is NOT else/endif/case/endswitch, also end (fixes a bug tickompiler has with Fillbots)
+    - if depth <= 0 and return/stop are found, end

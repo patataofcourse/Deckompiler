@@ -125,10 +125,11 @@ impl C00Bin {
                     &c00_type,
                     file,
                     &mut queue,
-                    &mut pos,
+                    pos,
                     &mut bindata,
                     &mut stringdata,
                 )?;
+                pos += 1;
             }
         }
 
@@ -145,15 +146,16 @@ pub fn extract_tickflow<F: Read + Seek>(
     c00_type: &C00Type,
     file: &mut F,
     queue: &mut Vec<(u32, u32)>,
-    pos: &mut usize,
+    pos: usize,
     bindata: &mut Vec<u8>,
     stringdata: &mut Vec<u8>,
 ) -> IOResult<()> {
-    let mut scene = queue[*pos].1;
+    let mut scene = queue[pos].1;
     file.seek(SeekFrom::Start(
-        queue[*pos].0 as u64 - c00_type.base_offset() as u64,
+        queue[pos].0 as u64 - c00_type.base_offset() as u64,
     ))?;
-    loop {
+    let mut done = false;
+    while !done {
         let op_int = u32::read_from(file, ByteOrder::LittleEndian)?;
         let arg_count = (op_int & 0x3C00 >> 10) as u8;
         let mut args = vec![];
@@ -165,12 +167,19 @@ pub fn extract_tickflow<F: Read + Seek>(
             scene = *args.get(0).unwrap_or(&scene);
         } else if let Some(c) = operations::is_call_op(op_int) {
             //TODO: mark as pointer for second pass
-            //TODO: ok but what func does it refer to??? keep a list somewhere
-            //TODO: make sure the position doesn't appear twice
-            queue.push((args[c.args[0] as usize], scene));
+            let mut is_in_queue = false;
+            let pointer_pos = args[c.args[0] as usize];
+            for (position, _) in &*queue {
+                if *position == pointer_pos {
+                    is_in_queue = true;
+                    break;
+                }
+            }
+            if !is_in_queue {
+                queue.push((pointer_pos, scene));
+            }
         } else if let Some(c) = operations::is_string_op(op_int) {
-            //TODO: mark as string pointer for second pass
-            //TODO: push position of string pointer
+            //TODO: mark as string pointer for second pass (since we can't know raw positions rn)
             stringdata.extend(read_string(
                 c00_type,
                 file,
@@ -189,12 +198,13 @@ pub fn extract_tickflow<F: Read + Seek>(
             }
         } else if let Some(_) = operations::is_return_op(op_int) {
             if depth == 0 {
-                break;
+                done = true;
             }
         }
-        //TODO
+        //TODO: add tickflow bytecode instructions
     }
-    *pos += 1;
+
+    //TODO: second pass for tickompiler pointer metadata + fixing string pointers
     Ok(())
 }
 
