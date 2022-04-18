@@ -119,9 +119,16 @@ impl C00Bin {
             let mut queue = vec![(game.start, 0xFF), (game.assets, 0xFF)];
             let mut bindata = vec![];
             let mut stringdata = vec![];
-            while queue.len() != 0 {
-                extract_tickflow(&c00_type, file, &mut queue, &mut bindata, &mut stringdata)?;
-                queue.remove(0);
+            let mut pos = 0;
+            while queue.len() < pos {
+                extract_tickflow(
+                    &c00_type,
+                    file,
+                    &mut queue,
+                    &mut pos,
+                    &mut bindata,
+                    &mut stringdata,
+                )?;
             }
         }
 
@@ -138,12 +145,13 @@ pub fn extract_tickflow<F: Read + Seek>(
     c00_type: &C00Type,
     file: &mut F,
     queue: &mut Vec<(u32, u32)>,
+    pos: &mut usize,
     bindata: &mut Vec<u8>,
     stringdata: &mut Vec<u8>,
 ) -> IOResult<()> {
-    let mut scene = queue[0].1;
+    let mut scene = queue[*pos].1;
     file.seek(SeekFrom::Start(
-        queue[0].0 as u64 - c00_type.base_offset() as u64,
+        queue[*pos].0 as u64 - c00_type.base_offset() as u64,
     ))?;
     loop {
         let op_int = u32::read_from(file, ByteOrder::LittleEndian)?;
@@ -158,19 +166,35 @@ pub fn extract_tickflow<F: Read + Seek>(
         } else if let Some(c) = operations::is_call_op(op_int) {
             //TODO: mark as pointer for second pass
             //TODO: ok but what func does it refer to??? keep a list somewhere
+            //TODO: make sure the position doesn't appear twice
             queue.push((args[c.args[0] as usize], scene));
         } else if let Some(c) = operations::is_string_op(op_int) {
             //TODO: mark as string pointer for second pass
             //TODO: push position of string pointer
-            read_string(
+            stringdata.extend(read_string(
                 c00_type,
                 file,
                 args[c.args[0] as usize].into(),
                 c.is_unicode,
-            )?;
+            )?);
+        } else if let Some(_) = operations::is_depth_op(op_int) {
+            #[allow(unused_assignments)]
+            {
+                depth += 1;
+            }
+        } else if let Some(_) = operations::is_undepth_op(op_int) {
+            #[allow(unused_assignments)]
+            {
+                depth -= 1;
+            }
+        } else if let Some(_) = operations::is_return_op(op_int) {
+            if depth == 0 {
+                break;
+            }
         }
         //TODO
     }
+    *pos += 1;
     Ok(())
 }
 

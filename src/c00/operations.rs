@@ -31,6 +31,22 @@ macro_rules! tf_op_args {
     };
 }
 
+#[macro_export]
+macro_rules! tf_op {
+    ($cmdname:literal $(<$arg0:literal>)?) => {
+        {
+            let command = $cmdname & 0x3FF $(+ $arg0 << 14)?;
+
+            TickflowOp {
+                is_unicode: false,
+                command,
+                args: vec![],
+                scene: None,
+            }
+        }
+    };
+}
+
 pub fn string_ops() -> Vec<TickflowOp> {
     vec![
         tf_op_args!(0x31, vec![1], is_unicode = true),
@@ -96,4 +112,52 @@ pub fn is_call_op(opcode: u32) -> Option<TickflowOp> {
     None
 }
 
-//TODO: depth ops, undepth ops, return ops
+pub fn depth_ops() -> Vec<TickflowOp> {
+    vec![
+        tf_op!(0x16),
+        tf_op!(0x16<1>),
+        tf_op!(0x16<2>),
+        tf_op!(0x16<3>),
+        tf_op!(0x16<4>),
+        tf_op!(0x16<5>),
+        tf_op!(0x19),
+    ]
+}
+
+pub fn is_depth_op(opcode: u32) -> Option<TickflowOp> {
+    let opcode = opcode & OPCODE_MASK;
+    for op in depth_ops() {
+        if op.command == opcode {
+            return Some(op);
+        }
+    }
+    None
+}
+
+pub fn undepth_ops() -> Vec<TickflowOp> {
+    vec![tf_op!(0x18), tf_op!(0x1D)]
+}
+
+pub fn is_undepth_op(opcode: u32) -> Option<TickflowOp> {
+    let opcode = opcode & OPCODE_MASK;
+    for op in undepth_ops() {
+        if op.command == opcode {
+            return Some(op);
+        }
+    }
+    None
+}
+
+pub fn return_ops() -> Vec<TickflowOp> {
+    vec![tf_op!(0x7), tf_op!(0x8)]
+}
+
+pub fn is_return_op(opcode: u32) -> Option<TickflowOp> {
+    let opcode = opcode & OPCODE_MASK;
+    for op in return_ops() {
+        if op.command == opcode {
+            return Some(op);
+        }
+    }
+    None
+}
