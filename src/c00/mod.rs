@@ -48,8 +48,9 @@ pub struct TickompilerBinary {
 #[derive(Debug, Clone)]
 pub struct TempoTable {
     pub id1: u32,
-    pub id2: u32,
+    pub unk: u32,
     pub pos: u32,
+    pub id2: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -84,18 +85,18 @@ impl C00Bin {
                     data: vec![],
                 });
             }
-            file.seek(SeekFrom::Current(0x28))?;
+            file.seek(SeekFrom::Current(0x2C))?;
         }
-        file.seek(SeekFrom::Current(0x68))?; // This Shit Should Not Be In Base Dot Bin
+        file.seek(SeekFrom::Current(0x64))?; // This Shit Should Not Be In Base Dot Bin
 
         //tempo table
         for _ in 0..0x1DD {
-            let id1 = u32::read_from(file, ByteOrder::LittleEndian)?;
+            let id1 = u32::read_from(file, ByteOrder::LittleEndian)?; // padding
             let id2 = u32::read_from(file, ByteOrder::LittleEndian)?;
+            let unk = u32::read_from(file, ByteOrder::LittleEndian)?;
             let pos = u32::read_from(file, ByteOrder::LittleEndian)?;
-            u32::read_from(file, ByteOrder::LittleEndian)?; // padding
             if pos >= 0x550000 {
-                edited_tempos.push(TempoTable { id1, id2, pos });
+                edited_tempos.push(TempoTable { id1, unk, pos, id2 });
             }
         }
 
@@ -111,7 +112,7 @@ impl C00Bin {
                     data: vec![],
                 });
             }
-            file.seek(SeekFrom::Current(0x18))?;
+            file.seek(SeekFrom::Current(0x1C))?;
         }
 
         // Step 2 - Read and extract tickflow .bin-s
@@ -127,7 +128,7 @@ impl C00Bin {
             let mut stringdata = vec![];
             let mut pos = 0;
             let mut pointers = vec![];
-            while queue.len() < pos {
+            while pos < queue.len() {
                 pointers.extend(extract_tickflow(
                     &c00_type,
                     file,
@@ -165,12 +166,28 @@ pub fn extract_tickflow<F: Read + Seek>(
     let mut pointers = vec![];
     while !done {
         let op_int = u32::read_from(file, ByteOrder::LittleEndian)?;
-        let arg_count = (op_int & 0x3C00 >> 10) as u8;
+        let arg_count = ((op_int & 0x3C00) >> 10) as u8;
         let mut args = vec![];
         let mut depth = 0;
         for _ in 0..arg_count {
             args.push(u32::read_from(file, ByteOrder::LittleEndian)?);
         }
+
+        println!(
+            "{:#X}{} [{} args]",
+            op_int & 0x3FF,
+            || -> String {
+                let arg0 = op_int >> 14;
+                if arg0 == 0 {
+                    String::new()
+                } else if arg0 < 0xA {
+                    format!("<{}>", arg0)
+                } else {
+                    format!("<{:#X}>", arg0)
+                }
+            }(),
+            arg_count
+        );
         if operations::is_scene_op(op_int) {
             scene = *args.get(0).unwrap_or(&scene);
         } else if let Some(c) = operations::is_call_op(op_int) {
@@ -186,12 +203,12 @@ pub fn extract_tickflow<F: Read + Seek>(
                 queue.push((pointer_pos, scene));
             }
             pointers.push(Pointer::Tickflow {
-                offset: bindata.len() as u32 + c.args[0] as u32 * 4,
+                offset: bindata.len() as u32 + c.args[0] as u32 * 4 + 4,
                 points_to: pointer_pos - c00_type.base_offset(),
             });
         } else if let Some(c) = operations::is_string_op(op_int) {
             pointers.push(Pointer::String {
-                offset: bindata.len() as u32 + c.args[0] as u32 * 4,
+                offset: bindata.len() as u32 + c.args[0] as u32 * 4 + 4,
                 points_to: stringdata.len() as u32,
             });
             stringdata.extend(read_string(
@@ -210,7 +227,7 @@ pub fn extract_tickflow<F: Read + Seek>(
             {
                 depth -= 1;
             }
-        } else if let Some(_) = operations::is_return_op(op_int) {
+        } else if let Some(c) = operations::is_return_op(op_int) {
             if depth == 0 {
                 done = true;
             }
@@ -243,7 +260,11 @@ pub fn read_string<F: Read + Seek>(
         }
     } else {
         loop {
-            unimplemented!(); //TODO
+            let chr = u8::read_from(file, ByteOrder::LittleEndian)?;
+            string_data.push(chr);
+            if chr == 0 {
+                break;
+            }
         }
     }
 

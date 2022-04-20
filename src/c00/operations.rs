@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct TickflowOp {
     pub is_unicode: bool, // To be used with string operations
     pub command: u32,     // Following the tickflow bytecode specifications
@@ -11,7 +12,7 @@ const OPCODE_MASK: u32 = 0xFFFFC3FF;
 macro_rules! tf_op_args {
     ($cmdname:literal $(<$arg0:literal>)?, $args:expr $(, $scene:literal)? $(, is_unicode=$is_unicode:literal)? $(,)?) => {
         {
-        let command = $cmdname & 0x3FF $(+ $arg0 << 14)?;
+        let command = ($cmdname & 0x3FF) $(+ $arg0 << 14)?;
 
         #[allow(unused_mut, unused_assignments)]
         let mut is_unicode = false;
