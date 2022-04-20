@@ -54,9 +54,9 @@ pub struct TempoTable {
 }
 
 #[derive(Debug, Clone)]
-pub enum Pointer {
-    Tickflow { offset: u32, points_to: u32 },
-    String { offset: u32, points_to: u32 },
+pub struct StringPointer {
+    pub offset: u32,
+    pub points_to: u32,
 }
 
 impl C00Bin {
@@ -127,9 +127,9 @@ impl C00Bin {
             let mut bindata = vec![];
             let mut stringdata = vec![];
             let mut pos = 0;
-            let mut pointers = vec![];
+            let mut str_pointers = vec![];
             while pos < queue.len() {
-                pointers.extend(extract_tickflow(
+                str_pointers.extend(extract_tickflow(
                     &c00_type,
                     file,
                     &mut queue,
@@ -138,6 +138,10 @@ impl C00Bin {
                     &mut stringdata,
                 )?);
                 pos += 1;
+            }
+
+            for pointer in str_pointers {
+                // ...
             }
         }
 
@@ -157,7 +161,7 @@ pub fn extract_tickflow<F: Read + Seek>(
     pos: usize,
     bindata: &mut Vec<u8>,
     stringdata: &mut Vec<u8>,
-) -> IOResult<Vec<Pointer>> {
+) -> IOResult<Vec<StringPointer>> {
     let mut scene = queue[pos].1;
     file.seek(SeekFrom::Start(
         queue[pos].0 as u64 - c00_type.base_offset() as u64,
@@ -172,22 +176,6 @@ pub fn extract_tickflow<F: Read + Seek>(
         for _ in 0..arg_count {
             args.push(u32::read_from(file, ByteOrder::LittleEndian)?);
         }
-
-        println!(
-            "{:#X}{} [{} args]",
-            op_int & 0x3FF,
-            || -> String {
-                let arg0 = op_int >> 14;
-                if arg0 == 0 {
-                    String::new()
-                } else if arg0 < 0xA {
-                    format!("<{}>", arg0)
-                } else {
-                    format!("<{:#X}>", arg0)
-                }
-            }(),
-            arg_count
-        );
         if operations::is_scene_op(op_int) {
             scene = *args.get(0).unwrap_or(&scene);
         } else if let Some(c) = operations::is_call_op(op_int) {
@@ -202,21 +190,40 @@ pub fn extract_tickflow<F: Read + Seek>(
             if !is_in_queue {
                 queue.push((pointer_pos, scene));
             }
-            pointers.push(Pointer::Tickflow {
-                offset: bindata.len() as u32 + c.args[0] as u32 * 4 + 4,
-                points_to: pointer_pos - c00_type.base_offset(),
-            });
+            args[c.args[0] as usize] = pointer_pos - c00_type.base_offset();
+
+            // Tickompiler argument annotation
+            //  0xFFFFFFFF - Start section
+            //  0x00000001 - One argument
+            //  0x00000X00 - Pointer argument at position X = c.args[0]
+            (0xFFFFFFFFu32).write_to(bindata, ByteOrder::LittleEndian)?;
+            1u32.write_to(bindata, ByteOrder::LittleEndian)?;
+            ((c.args[0] as u32) << 8).write_to(bindata, ByteOrder::LittleEndian)?;
         } else if let Some(c) = operations::is_string_op(op_int) {
-            pointers.push(Pointer::String {
-                offset: bindata.len() as u32 + c.args[0] as u32 * 4 + 4,
-                points_to: stringdata.len() as u32,
-            });
-            stringdata.extend(read_string(
-                c00_type,
-                file,
-                args[c.args[0] as usize].into(),
-                c.is_unicode,
-            )?);
+            for arg in &c.args {
+                pointers.push(StringPointer {
+                    offset: bindata.len() as u32,
+                    points_to: stringdata.len() as u32,
+                });
+                stringdata.extend(read_string(
+                    c00_type,
+                    file,
+                    args[*arg as usize].into(),
+                    c.is_unicode,
+                )?);
+            }
+
+            // Tickompiler argument annotation
+            //  0xFFFFFFFF - Start section
+            //  0x0000000X - X arguments
+            //  For each argument:
+            //    0x00000X0Y - Pointer argument at position X = arg of type Y = 1 if unicode, 2 if ASCII
+            (0xFFFFFFFFu32).write_to(bindata, ByteOrder::LittleEndian)?;
+            (c.args.len() as u32).write_to(bindata, ByteOrder::LittleEndian)?;
+            for arg in c.args {
+                let p_type = if c.is_unicode { 1 } else { 2 };
+                (p_type + (arg as u32) << 8).write_to(bindata, ByteOrder::LittleEndian)?;
+            }
         } else if let Some(_) = operations::is_depth_op(op_int) {
             #[allow(unused_assignments)]
             {
