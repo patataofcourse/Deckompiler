@@ -43,6 +43,7 @@ pub struct TickompilerBinary {
     pub start: u32,
     pub assets: u32,
     pub data: Vec<u8>,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +84,7 @@ impl C00Bin {
                     start,
                     assets: u32::read_from(file, ByteOrder::LittleEndian)?,
                     data: vec![],
+                    name: String::new(),
                 });
             }
             file.seek(SeekFrom::Current(0x2C))?;
@@ -110,13 +112,14 @@ impl C00Bin {
                     start,
                     assets: u32::read_from(file, ByteOrder::LittleEndian)?,
                     data: vec![],
+                    name: String::new(),
                 });
             }
             file.seek(SeekFrom::Current(0x1C))?;
         }
 
         // Step 2 - Read and extract tickflow .bin-s
-        for game in edited_games {
+        for game in &mut edited_games {
             let is_gate = game.index >= 0x100;
             let name = if is_gate {
                 constants::NAME_TICKFLOW_ENDLESS[game.index as usize - 0x100]
@@ -140,9 +143,12 @@ impl C00Bin {
                 pos += 1;
             }
 
-            for pointer in str_pointers {
-                // ...
-            }
+            // End Tickflow, string data only
+            0xFFFFFFFEu32.write_to(&mut bindata, ByteOrder::LittleEndian)?;
+            (&mut bindata).write(&stringdata)?;
+
+            game.name = format!("{}.tickflow", name);
+            game.data = bindata;
         }
 
         // Step 3 - Read and extract .tempo-s
