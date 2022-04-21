@@ -1,4 +1,4 @@
-use crate::common::Tempo;
+use crate::common::{Tempo, TempoVal};
 use bytestream::{ByteOrder, StreamReader, StreamWriter};
 use std::io::{Read, Result as IOResult, Seek, SeekFrom, Write};
 
@@ -49,9 +49,9 @@ pub struct TickompilerBinary {
 #[derive(Debug, Clone)]
 pub struct TempoTable {
     pub id1: u32,
+    pub id2: u32,
     pub unk: u32,
     pub pos: u32,
-    pub id2: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -152,10 +152,50 @@ impl C00Bin {
         }
 
         // Step 3 - Read and extract .tempo-s
+        let mut tempos = vec![];
+        for tempo in &edited_tempos {
+            // Note: for most (if not all) tempos, one ID is 0xFFFFFFFF
+            let mut tempo_vals = vec![];
+            file.seek(SeekFrom::Start(
+                tempo.pos as u64 - c00_type.base_offset() as u64,
+            ))?;
+            loop {
+                let beats = u32::read_from(file, ByteOrder::LittleEndian)?;
+                let time = u32::read_from(file, ByteOrder::LittleEndian)?;
+                let loop_val = u32::read_from(file, ByteOrder::LittleEndian)?;
+                println!("{} {} {}", beats, time, loop_val);
+                tempo_vals.push(TempoVal {
+                    beats,
+                    time,
+                    loop_val,
+                });
+                //pretty sure this is the observable behavior
+                if loop_val & 0x8001 != 0 {
+                    break;
+                }
+            }
+            if tempo.id1 != 0xFFFFFFFF {
+                tempos.push(Tempo {
+                    id: tempo.id1,
+                    data: tempo_vals.clone(),
+                })
+            }
+            if tempo.id2 != 0xFFFFFFFF {
+                tempos.push(Tempo {
+                    id: tempo.id2,
+                    data: tempo_vals,
+                })
+            }
+        }
 
         // Step 4 - profit
 
-        unimplemented!();
+        Ok(C00Bin {
+            c00_type,
+            base_patch: Patch, //TODO
+            tickflows: edited_games,
+            tempos,
+        })
     }
 }
 
@@ -297,11 +337,11 @@ impl TickompilerBinary {
 
 impl Tempo {
     pub fn to_tickompiler_file(&self) -> String {
-        let mut out = format!("{}\n", self.id);
+        let mut out = format!("{:X}\n", self.id);
         for val in &self.data {
-            let seconds = val.time as f64 * 1000.0;
-            let bpm = val.beats as f64 / seconds * 60.0;
-            out += &format!("{:#.3} {:#.3} {}", bpm, seconds, val.loop_val);
+            let seconds = val.time as f64 / 32000.0;
+            let bpm = 60.0 * val.beats as f64 / seconds;
+            out += &format!("{:#.3} {:#.3} {}\n", bpm, val.beats as f64, val.loop_val);
         }
         out
     }
