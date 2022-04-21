@@ -1,6 +1,6 @@
 use deckompiler::{
     btks::BTKS,
-    c00::{constants::NAME_TEMPO, C00Bin, C00Type},
+    c00::{C00Bin, C00Type},
 };
 use std::{
     fs::File,
@@ -20,13 +20,10 @@ fn main() -> IOResult<()> {
     let mut f = File::open("test_files/C00.bin")?;
     let c00 = C00Bin::from_file(&mut f, C00Type::RHMPatch)?;
     let tfbin = c00.tickflows[0].clone();
-    let mut bin = File::create(&format!("test_files/{}", tfbin.name))?;
+    let mut bin = File::create(&format!("test_files/{}.bin", tfbin.name()))?;
     tfbin.to_file(&mut bin)?;
     let tempo = c00.tempos[0].clone();
-    let mut tmp = File::create(&format!(
-        "test_files/{}.tempo",
-        NAME_TEMPO[tempo.id as usize - 0x1000000]
-    ))?;
+    let mut tmp = File::create(&format!("test_files/{}.tempo", tempo.name()))?;
     tmp.write(tempo.to_tickompiler_file().as_bytes())?;
     Ok(())
 }

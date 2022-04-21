@@ -43,7 +43,6 @@ pub struct TickompilerBinary {
     pub start: u32,
     pub assets: u32,
     pub data: Vec<u8>,
-    pub name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -84,7 +83,6 @@ impl C00Bin {
                     start,
                     assets: u32::read_from(file, ByteOrder::LittleEndian)?,
                     data: vec![],
-                    name: String::new(),
                 });
             }
             file.seek(SeekFrom::Current(0x2C))?;
@@ -112,7 +110,6 @@ impl C00Bin {
                     start,
                     assets: u32::read_from(file, ByteOrder::LittleEndian)?,
                     data: vec![],
-                    name: String::new(),
                 });
             }
             file.seek(SeekFrom::Current(0x1C))?;
@@ -121,11 +118,6 @@ impl C00Bin {
         // Step 2 - Read and extract tickflow .bin-s
         for game in &mut edited_games {
             let is_gate = game.index >= 0x100;
-            let name = if is_gate {
-                constants::NAME_TICKFLOW_ENDLESS[game.index as usize - 0x100]
-            } else {
-                constants::NAME_TICKFLOW[game.index as usize]
-            };
             let mut queue = vec![(game.start, 0xFF), (game.assets, 0xFF)];
             let mut bindata = vec![];
             let mut stringdata = vec![];
@@ -147,7 +139,6 @@ impl C00Bin {
             0xFFFFFFFEu32.write_to(&mut bindata, ByteOrder::LittleEndian)?;
             (&mut bindata).write(&stringdata)?;
 
-            game.name = format!("{}.tickflow", name);
             game.data = bindata;
         }
 
@@ -160,10 +151,10 @@ impl C00Bin {
                 tempo.pos as u64 - c00_type.base_offset() as u64,
             ))?;
             loop {
-                let beats = u32::read_from(file, ByteOrder::LittleEndian)?;
+                let beats_bytes = u32::read_from(file, ByteOrder::LittleEndian)?;
+                let beats = f32::from_bits(beats_bytes);
                 let time = u32::read_from(file, ByteOrder::LittleEndian)?;
                 let loop_val = u32::read_from(file, ByteOrder::LittleEndian)?;
-                println!("{} {} {}", beats, time, loop_val);
                 tempo_vals.push(TempoVal {
                     beats,
                     time,
@@ -333,6 +324,14 @@ impl TickompilerBinary {
         file.write(&self.data)?;
         Ok(())
     }
+
+    pub fn name(&self) -> &str {
+        if self.index >= 0x100 {
+            constants::NAME_TICKFLOW_ENDLESS[self.index as usize - 0x100]
+        } else {
+            constants::NAME_TICKFLOW[self.index as usize]
+        }
+    }
 }
 
 impl Tempo {
@@ -344,5 +343,9 @@ impl Tempo {
             out += &format!("{:#.3} {:#.3} {}\n", bpm, val.beats as f64, val.loop_val);
         }
         out
+    }
+
+    pub fn name(&self) -> &str {
+        constants::NAME_TEMPO[self.id as usize - 0x1000000]
     }
 }

@@ -6,7 +6,7 @@ pub struct Tempo {
 
 #[derive(Debug, Clone)]
 pub struct TempoVal {
-    pub beats: u32,
+    pub beats: f32,
     pub time: u32, // in 32000ths of a second
     pub loop_val: u32,
 }
