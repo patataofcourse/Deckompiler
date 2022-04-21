@@ -117,7 +117,6 @@ impl C00Bin {
 
         // Step 2 - Read and extract tickflow .bin-s
         for game in &mut edited_games {
-            let is_gate = game.index >= 0x100;
             let mut queue = vec![(game.start, 0xFF), (game.assets, 0xFF)];
             let mut bindata = vec![];
             let mut stringdata = vec![];
@@ -271,7 +270,7 @@ pub fn extract_tickflow<F: Read + Seek>(
             {
                 depth -= 1;
             }
-        } else if let Some(c) = operations::is_return_op(op_int) {
+        } else if let Some(_) = operations::is_return_op(op_int) {
             if depth == 0 {
                 done = true;
             }
@@ -317,11 +316,16 @@ pub fn read_string<F: Read + Seek>(
 }
 
 impl TickompilerBinary {
-    pub fn to_file<F: Write>(&self, file: &mut F) -> IOResult<()> {
+    pub fn to_file<F: Write + Seek>(&self, file: &mut F) -> IOResult<()> {
         self.index.write_to(file, ByteOrder::LittleEndian)?;
         self.start.write_to(file, ByteOrder::LittleEndian)?;
         self.assets.write_to(file, ByteOrder::LittleEndian)?;
         file.write(&self.data)?;
+        if file.stream_position()? % 4 != 0 {
+            for _ in 0..4 - (file.stream_position()? % 4) {
+                0u8.write_to(file, ByteOrder::LittleEndian)?;
+            }
+        }
         Ok(())
     }
 
