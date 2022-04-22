@@ -54,9 +54,9 @@ pub struct TempoTable {
 }
 
 #[derive(Debug, Clone)]
-pub struct StringPointer {
-    pub offset: u32,
-    pub points_to: u32,
+pub enum Pointer {
+    String { offset: u32, points_to: u32 },
+    Tickflow { offset: u32, points_to: u32 },
 }
 
 impl C00Bin {
@@ -107,7 +107,7 @@ impl C00Bin {
             if start >= 0x550000 {
                 edited_games.push(TickompilerBinary {
                     index: i,
-                    start,
+                    start: start,
                     assets: u32::read_from(file, ByteOrder::LittleEndian)?,
                     data: vec![],
                 });
@@ -116,6 +116,9 @@ impl C00Bin {
         }
 
         // Step 2 - Read and extract tickflow .bin-s
+        let mut func_order = vec![];
+        let mut func_positions = vec![];
+        let mut func_positions_2 = vec![];
         for game in &mut edited_games {
             let mut queue = vec![(game.start, 0xFF), (game.assets, 0xFF)];
             let mut bindata = vec![];
@@ -124,6 +127,9 @@ impl C00Bin {
             let mut str_pointers = vec![];
             let mut argann_size = 0;
             while pos < queue.len() {
+                func_order.push(queue[pos].0 - c00_type.base_offset());
+                func_positions.push(bindata.len() - argann_size);
+                func_positions_2.push(bindata.len());
                 str_pointers.extend(extract_tickflow(
                     &c00_type,
                     file,
@@ -133,18 +139,32 @@ impl C00Bin {
                     &mut stringdata,
                     &mut argann_size,
                 )?);
+
                 pos += 1;
             }
 
             let bin_len = bindata.len() - argann_size;
 
             for pointer in str_pointers {
-                let out_bytes = (pointer.points_to + bin_len as u32).to_le_bytes();
-                let mut i = 0;
-                for byte in &mut bindata[pointer.offset as usize..pointer.offset as usize + 4] {
-                    *byte = out_bytes[i];
-                    println!("{:?} {:#X}", out_bytes, u32::from_le_bytes(out_bytes));
-                    i += 1;
+                if let Pointer::String { offset, points_to } = pointer {
+                    let out_bytes = (points_to + bin_len as u32).to_le_bytes();
+                    let mut i = 0;
+                    for byte in &mut bindata[offset as usize..offset as usize + 4] {
+                        *byte = out_bytes[i];
+                        i += 1;
+                    }
+                } else if let Pointer::Tickflow { offset, points_to } = pointer {
+                    let func_number = func_order
+                        .iter()
+                        .position(|&r| r == points_to)
+                        .expect("Couldn't find sub");
+                    let func_pos = func_positions[func_number];
+                    let out_bytes = (func_pos).to_le_bytes();
+                    let mut i = 0;
+                    for byte in &mut bindata[offset as usize..offset as usize + 4] {
+                        *byte = out_bytes[i];
+                        i += 1;
+                    }
                 }
             }
 
@@ -153,6 +173,8 @@ impl C00Bin {
             (&mut bindata).write(&stringdata)?;
 
             game.data = bindata;
+            game.assets = func_positions[1] as u32;
+            game.start = 0;
         }
 
         // Step 3 - Read and extract .tempo-s
@@ -212,26 +234,26 @@ pub fn extract_tickflow<F: Read + Seek>(
     bindata: &mut Vec<u8>,
     stringdata: &mut Vec<u8>,
     argann_size: &mut usize,
-) -> IOResult<Vec<StringPointer>> {
+) -> IOResult<Vec<Pointer>> {
     let mut scene = queue[pos].1;
     file.seek(SeekFrom::Start(
         queue[pos].0 as u64 - c00_type.base_offset() as u64,
     ))?;
     let mut done = false;
     let mut pointers = vec![];
+    let mut depth = 0;
     while !done {
         let op_int = u32::read_from(file, ByteOrder::LittleEndian)?;
         let arg_count = ((op_int & 0x3C00) >> 10) as u8;
         let mut args = vec![];
-        let mut depth = 0;
         for _ in 0..arg_count {
             args.push(u32::read_from(file, ByteOrder::LittleEndian)?);
         }
         if operations::is_scene_op(op_int) {
             scene = *args.get(0).unwrap_or(&scene);
         } else if let Some(c) = operations::is_call_op(op_int) {
-            let mut is_in_queue = false;
             let pointer_pos = args[c.args[0] as usize];
+            let mut is_in_queue = false;
             for (position, _) in &*queue {
                 if *position == pointer_pos {
                     is_in_queue = true;
@@ -250,21 +272,13 @@ pub fn extract_tickflow<F: Read + Seek>(
             (0xFFFFFFFFu32).write_to(bindata, ByteOrder::LittleEndian)?;
             1u32.write_to(bindata, ByteOrder::LittleEndian)?;
             ((c.args[0] as u32) << 8).write_to(bindata, ByteOrder::LittleEndian)?;
-            *argann_size += 3;
-        } else if let Some(c) = operations::is_string_op(op_int) {
-            for arg in &c.args {
-                pointers.push(StringPointer {
-                    offset: bindata.len() as u32,
-                    points_to: stringdata.len() as u32,
-                });
-                stringdata.extend(read_string(
-                    c00_type,
-                    file,
-                    args[*arg as usize].into(),
-                    c.is_unicode,
-                )?);
-            }
+            *argann_size += 3 * 4;
 
+            pointers.push(Pointer::Tickflow {
+                offset: bindata.len() as u32 + (4 * (c.args[0] + 1)) as u32,
+                points_to: pointer_pos - c00_type.base_offset(),
+            });
+        } else if let Some(c) = operations::is_string_op(op_int) {
             // Tickompiler argument annotation
             //  0xFFFFFFFF - Start section
             //  0x0000000X - X arguments
@@ -276,19 +290,37 @@ pub fn extract_tickflow<F: Read + Seek>(
                 let p_type = if c.is_unicode { 1 } else { 2 };
                 (p_type + ((*arg as u32) << 8)).write_to(bindata, ByteOrder::LittleEndian)?;
             }
-            *argann_size += 2 + c.args.len();
+            *argann_size += (2 + c.args.len()) * 4;
+
+            for arg in &c.args {
+                stringdata.extend(read_string(
+                    c00_type,
+                    file,
+                    args[*arg as usize].into(),
+                    c.is_unicode,
+                )?);
+
+                pointers.push(Pointer::String {
+                    offset: bindata.len() as u32 + (4 * (*arg + 1)) as u32,
+                    points_to: stringdata.len() as u32,
+                });
+            }
         } else if let Some(_) = operations::is_depth_op(op_int) {
+            println!("+{}", depth);
             #[allow(unused_assignments)]
             {
                 depth += 1;
             }
         } else if let Some(_) = operations::is_undepth_op(op_int) {
+            println!("-{}", depth);
             #[allow(unused_assignments)]
             {
-                depth -= 1;
+                if depth > 0 {
+                    depth -= 1;
+                }
             }
         } else if let Some(_) = operations::is_return_op(op_int) {
-            if depth == 0 {
+            if depth <= 0 {
                 done = true;
             }
         }
