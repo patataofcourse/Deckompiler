@@ -305,14 +305,14 @@ pub fn extract_tickflow<F: Read + Seek>(
                     points_to: stringdata.len() as u32,
                 });
             }
-        } else if let Some(_) = operations::is_depth_op(op_int) {
-            println!("+{}", depth);
+        } else if let Some(c) = operations::is_depth_op(op_int) {
+            println!("+{} {:#X?}", depth, operations::depth_ops());
             #[allow(unused_assignments)]
             {
                 depth += 1;
             }
-        } else if let Some(_) = operations::is_undepth_op(op_int) {
-            println!("-{}", depth);
+        } else if let Some(c) = operations::is_undepth_op(op_int) {
+            println!("-{} {:#X?}", depth, c);
             #[allow(unused_assignments)]
             {
                 if depth > 0 {

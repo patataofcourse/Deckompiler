@@ -36,8 +36,7 @@ macro_rules! tf_op_args {
 macro_rules! tf_op {
     ($cmdname:literal $(<$arg0:literal>)?) => {
         {
-            let command = $cmdname & 0x3FF $(+ $arg0 << 14)?;
-
+            let command = ($cmdname & 0x3FF) $(+ $arg0 << 14)?;
             TickflowOp {
                 is_unicode: false,
                 command,
