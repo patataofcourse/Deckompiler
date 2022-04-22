@@ -122,6 +122,7 @@ impl C00Bin {
             let mut stringdata = vec![];
             let mut pos = 0;
             let mut str_pointers = vec![];
+            let mut argann_size = 0;
             while pos < queue.len() {
                 str_pointers.extend(extract_tickflow(
                     &c00_type,
@@ -130,8 +131,21 @@ impl C00Bin {
                     pos,
                     &mut bindata,
                     &mut stringdata,
+                    &mut argann_size,
                 )?);
                 pos += 1;
+            }
+
+            let bin_len = bindata.len() - argann_size;
+
+            for pointer in str_pointers {
+                let out_bytes = (pointer.points_to + bin_len as u32).to_le_bytes();
+                let mut i = 0;
+                for byte in &mut bindata[pointer.offset as usize..pointer.offset as usize + 4] {
+                    *byte = out_bytes[i];
+                    println!("{:?} {:#X}", out_bytes, u32::from_le_bytes(out_bytes));
+                    i += 1;
+                }
             }
 
             // End Tickflow, string data only
@@ -197,6 +211,7 @@ pub fn extract_tickflow<F: Read + Seek>(
     pos: usize,
     bindata: &mut Vec<u8>,
     stringdata: &mut Vec<u8>,
+    argann_size: &mut usize,
 ) -> IOResult<Vec<StringPointer>> {
     let mut scene = queue[pos].1;
     file.seek(SeekFrom::Start(
@@ -235,6 +250,7 @@ pub fn extract_tickflow<F: Read + Seek>(
             (0xFFFFFFFFu32).write_to(bindata, ByteOrder::LittleEndian)?;
             1u32.write_to(bindata, ByteOrder::LittleEndian)?;
             ((c.args[0] as u32) << 8).write_to(bindata, ByteOrder::LittleEndian)?;
+            *argann_size += 3;
         } else if let Some(c) = operations::is_string_op(op_int) {
             for arg in &c.args {
                 pointers.push(StringPointer {
@@ -256,10 +272,11 @@ pub fn extract_tickflow<F: Read + Seek>(
             //    0x00000X0Y - Pointer argument at position X = arg of type Y = 1 if unicode, 2 if ASCII
             (0xFFFFFFFFu32).write_to(bindata, ByteOrder::LittleEndian)?;
             (c.args.len() as u32).write_to(bindata, ByteOrder::LittleEndian)?;
-            for arg in c.args {
+            for arg in &c.args {
                 let p_type = if c.is_unicode { 1 } else { 2 };
-                (p_type + (arg as u32) << 8).write_to(bindata, ByteOrder::LittleEndian)?;
+                (p_type + ((*arg as u32) << 8)).write_to(bindata, ByteOrder::LittleEndian)?;
             }
+            *argann_size += 2 + c.args.len();
         } else if let Some(_) = operations::is_depth_op(op_int) {
             #[allow(unused_assignments)]
             {
@@ -322,7 +339,7 @@ impl TickompilerBinary {
         self.assets.write_to(file, ByteOrder::LittleEndian)?;
         file.write(&self.data)?;
         if file.stream_position()? % 4 != 0 {
-            for _ in 0..4 - (file.stream_position()? % 4) {
+            for _ in 0..8 - (file.stream_position()? % 4) {
                 0u8.write_to(file, ByteOrder::LittleEndian)?;
             }
         }
