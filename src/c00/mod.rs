@@ -293,26 +293,24 @@ pub fn extract_tickflow<F: Read + Seek>(
             *argann_size += (2 + c.args.len()) * 4;
 
             for arg in &c.args {
+                pointers.push(Pointer::String {
+                    offset: bindata.len() as u32 + (4 * (*arg + 1)) as u32,
+                    points_to: stringdata.len() as u32,
+                });
+
                 stringdata.extend(read_string(
                     c00_type,
                     file,
                     args[*arg as usize].into(),
                     c.is_unicode,
                 )?);
-
-                pointers.push(Pointer::String {
-                    offset: bindata.len() as u32 + (4 * (*arg + 1)) as u32,
-                    points_to: stringdata.len() as u32,
-                });
             }
-        } else if let Some(c) = operations::is_depth_op(op_int) {
-            println!("+{} {:#X?}", depth, operations::depth_ops());
+        } else if let Some(_) = operations::is_depth_op(op_int) {
             #[allow(unused_assignments)]
             {
                 depth += 1;
             }
-        } else if let Some(c) = operations::is_undepth_op(op_int) {
-            println!("-{} {:#X?}", depth, c);
+        } else if let Some(_) = operations::is_undepth_op(op_int) {
             #[allow(unused_assignments)]
             {
                 if depth > 0 {
