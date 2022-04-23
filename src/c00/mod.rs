@@ -337,6 +337,10 @@ pub fn read_string<F: Read + Seek>(
     is_unicode: bool,
 ) -> IOResult<Vec<u8>> {
     let og_pos = file.stream_position()?;
+    println!("{:#X}", pos);
+    if pos < c00_type.base_offset() as u64 {
+        return Ok(vec![0, 0]);
+    }
     file.seek(SeekFrom::Start(pos - c00_type.base_offset() as u64))?;
     let mut string_data = vec![];
 
