@@ -23,7 +23,7 @@ jobs:
     - uses: actions/upload-artifact@v1
       with:
         name: deckompiler-linux
-        path: ${{runner.workspace}}/deckompiler/target/release/deckompiler
+        path: ${{runner.workspace}}/deckompiler/target/debug/deckompiler
   windows:
     name: Windows
     runs-on: windows-latest
@@ -37,7 +37,7 @@ jobs:
     - uses: actions/upload-artifact@v1
       with:
         name: deckompiler-windows
-        path: ${{runner.workspace}}/deckompiler/target/release/deckompiler.exe
+        path: ${{runner.workspace}}/deckompiler/target/debug/deckompiler.exe
   macos:
     name: Mac
     runs-on: macos-latest
@@ -51,4 +51,4 @@ jobs:
     - uses: actions/upload-artifact@v1
       with:
         name: deckompiler-mac
-        path: ${{runner.workspace}}/deckompiler/target/release/deckompiler
+        path: ${{runner.workspace}}/deckompiler/target/debug/deckompiler
