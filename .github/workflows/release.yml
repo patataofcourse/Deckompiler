@@ -1,5 +1,9 @@
 name: Release builds
 
+on:
+  labels:
+  types: ["create"]
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -16,8 +20,8 @@ jobs:
       run: cargo test --verbose
     - uses: actions/upload-artifact@v1
       with:
-        name: flour-linux
-        path: ${{runner.workspace}}/flour/target/release/flour
+        name: deckompiler-linux
+        path: ${{runner.workspace}}/deckompiler/target/release/deckompiler
   windows:
     name: Windows
     runs-on: windows-latest
@@ -30,8 +34,8 @@ jobs:
       run: cargo test --verbose
     - uses: actions/upload-artifact@v1
       with:
-        name: flour-windows
-        path: ${{runner.workspace}}/flour/target/release/flour.exe
+        name: deckompiler-windows
+        path: ${{runner.workspace}}/deckompiler/target/release/deckompiler.exe
   macos:
     name: Mac
     runs-on: macos-latest
@@ -44,5 +48,5 @@ jobs:
       run: cargo test --verbose
     - uses: actions/upload-artifact@v1
       with:
-        name: flour-mac
-        path: ${{runner.workspace}}/flour/target/release/flour
+        name: deckompiler-mac
+        path: ${{runner.workspace}}/deckompiler/target/release/deckompiler
