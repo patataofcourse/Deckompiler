@@ -1,8 +1,8 @@
 name: Release builds
 
 on:
-  labels:
-  types: ["create"]
+  workflow_dispatch: 
+    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
