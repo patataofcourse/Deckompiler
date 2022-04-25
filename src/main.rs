@@ -10,6 +10,7 @@ use std::{
 };
 
 #[derive(Parser, Debug)]
+#[clap(author, version, about)]
 struct Cli {
     #[clap(subcommand)]
     commands: Commands,
@@ -17,13 +18,20 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Convert a Tickompiler .bin file to a Spicerack .btk
     Btks {
+        /// The path of the input .bin file
         bin: PathBuf,
+        /// The path for the output .btk file
         btks: PathBuf,
+        /// [to be implemented] Optional tempo files to include in the .btk
         tempo: Vec<PathBuf>,
     },
+    /// Extracts all contents of a C00.bin file into a folder
     C00 {
+        /// The C00.bin file to extract
         c00: PathBuf,
+        /// Location for files to be extracted
         out: PathBuf,
     },
 }

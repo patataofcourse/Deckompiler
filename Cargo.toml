@@ -1,5 +1,6 @@
 [package]
 name = "deckompiler"
+description = "Tool for Tickompiler formats"
 version = "0.1.0"
 edition = "2021"
 

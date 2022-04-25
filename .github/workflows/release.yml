@@ -20,8 +20,8 @@ jobs:
       run: cargo test --verbose
     - uses: actions/upload-artifact@v1
       with:
-        name: deckompiler-linux
-        path: ${{runner.workspace}}/deckompiler/target/release/deckompiler
+        name: Deckompiler-linux
+        path: ${{runner.workspace}}/Deckompiler/target/release/Deckompiler
   windows:
     name: Windows
     runs-on: windows-latest
@@ -34,8 +34,8 @@ jobs:
       run: cargo test --verbose
     - uses: actions/upload-artifact@v1
       with:
-        name: deckompiler-windows
-        path: ${{runner.workspace}}/deckompiler/target/release/deckompiler.exe
+        name: Deckompiler-windows
+        path: ${{runner.workspace}}/Deckompiler/target/release/Deckompiler.exe
   macos:
     name: Mac
     runs-on: macos-latest
@@ -48,5 +48,5 @@ jobs:
       run: cargo test --verbose
     - uses: actions/upload-artifact@v1
       with:
-        name: deckompiler-mac
-        path: ${{runner.workspace}}/deckompiler/target/release/deckompiler
+        name: Deckompiler-mac
+        path: ${{runner.workspace}}/Deckompiler/target/release/Deckompiler
