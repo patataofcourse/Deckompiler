@@ -1,0 +1,54 @@
+name: Debug builds
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose 
+    - name: Run tests
+      run: cargo test --verbose
+    - uses: actions/upload-artifact@v1
+      with:
+        name: flour-linux
+        path: ${{runner.workspace}}/flour/target/release/flour
+  windows:
+    name: Windows
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose 
+    - name: Run tests
+      run: cargo test --verbose
+    - uses: actions/upload-artifact@v1
+      with:
+        name: flour-windows
+        path: ${{runner.workspace}}/flour/target/release/flour.exe
+  macos:
+    name: Mac
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+    - uses: actions/upload-artifact@v1
+      with:
+        name: flour-mac
+        path: ${{runner.workspace}}/flour/target/release/flour
