@@ -337,7 +337,6 @@ pub fn read_string<F: Read + Seek>(
     is_unicode: bool,
 ) -> IOResult<Vec<u8>> {
     let og_pos = file.stream_position()?;
-    println!("{:#X}", pos);
     if pos < c00_type.base_offset() as u64 {
         return Ok(vec![0, 0]);
     }
@@ -360,6 +359,11 @@ pub fn read_string<F: Read + Seek>(
                 break;
             }
         }
+    }
+
+    //padding
+    for _ in 0..(4 - string_data.len() % 4) {
+        string_data.push(0);
     }
 
     file.seek(SeekFrom::Start(og_pos))?;
