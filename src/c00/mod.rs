@@ -120,7 +120,10 @@ impl C00Bin {
         let mut func_positions = vec![];
         let mut func_positions_2 = vec![];
         for game in &mut edited_games {
-            let mut queue = vec![(game.start, 0xFF), (game.assets, 0xFF)];
+            let mut queue = vec![(game.start, 0xFF)];
+            if game.assets >= 0x550000 {
+                queue.push((game.assets, 0xFF));
+            }
             let mut bindata = vec![];
             let mut stringdata = vec![];
             let mut pos = 0;
