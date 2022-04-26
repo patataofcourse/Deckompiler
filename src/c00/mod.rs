@@ -282,6 +282,17 @@ pub fn extract_tickflow<F: Read + Seek>(
                 points_to: pointer_pos - c00_type.base_offset(),
             });
         } else if let Some(c) = operations::is_string_op(op_int, scene) {
+            let mut ptr_data = vec![];
+
+            for arg in &c.args {
+                match read_string(c00_type, file, args[*arg as usize].into(), c.is_unicode)? {
+                    Some(c) => {
+                        ptr_data.push((4 * (*arg + 1) as u32, stringdata.len() as u32));
+                        stringdata.extend(c);
+                    }
+                    None => {}
+                }
+            }
             // Tickompiler argument annotation
             //  0xFFFFFFFF - Start section
             //  0x0000000X - X arguments
@@ -289,24 +300,17 @@ pub fn extract_tickflow<F: Read + Seek>(
             //    0x00000X0Y - Pointer argument at position X = arg of type Y = 1 if unicode, 2 if ASCII
             (0xFFFFFFFFu32).write_to(bindata, ByteOrder::LittleEndian)?;
             (c.args.len() as u32).write_to(bindata, ByteOrder::LittleEndian)?;
-            for arg in &c.args {
+            for (arg, _) in &ptr_data {
                 let p_type = if c.is_unicode { 1 } else { 2 };
                 (p_type + ((*arg as u32) << 8)).write_to(bindata, ByteOrder::LittleEndian)?;
             }
-            *argann_size += (2 + c.args.len()) * 4;
+            *argann_size += (2 + ptr_data.len()) * 4;
 
-            for arg in &c.args {
+            for (arg, pos) in &ptr_data {
                 pointers.push(Pointer::String {
-                    offset: bindata.len() as u32 + (4 * (*arg + 1)) as u32,
-                    points_to: stringdata.len() as u32,
+                    offset: bindata.len() as u32 + *arg,
+                    points_to: *pos,
                 });
-
-                stringdata.extend(read_string(
-                    c00_type,
-                    file,
-                    args[*arg as usize].into(),
-                    c.is_unicode,
-                )?);
             }
         } else if let Some(_) = operations::is_depth_op(op_int) {
             #[allow(unused_assignments)]
@@ -338,10 +342,10 @@ pub fn read_string<F: Read + Seek>(
     file: &mut F,
     pos: u64,
     is_unicode: bool,
-) -> IOResult<Vec<u8>> {
+) -> IOResult<Option<Vec<u8>>> {
     let og_pos = file.stream_position()?;
     if pos < c00_type.base_offset() as u64 {
-        return Ok(vec![0, 0]);
+        return Ok(None);
     }
     file.seek(SeekFrom::Start(pos - c00_type.base_offset() as u64))?;
     let mut string_data = vec![];
@@ -370,7 +374,7 @@ pub fn read_string<F: Read + Seek>(
     }
 
     file.seek(SeekFrom::Start(og_pos))?;
-    Ok(string_data)
+    Ok(Some(string_data))
 }
 
 impl TickompilerBinary {
