@@ -74,11 +74,16 @@ pub fn string_ops() -> Vec<TickflowOp> {
     ]
 }
 
-pub fn is_string_op(opcode: u32) -> Option<TickflowOp> {
+pub fn is_string_op(opcode: u32, scene: u32) -> Option<TickflowOp> {
     let opcode = opcode & OPCODE_MASK;
     for op in string_ops() {
         if op.command == opcode {
-            return Some(op);
+            if match op.scene {
+                Some(c) => c == scene,
+                None => false,
+            } {
+                return Some(op);
+            }
         }
     }
     None

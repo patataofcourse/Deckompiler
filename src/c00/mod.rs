@@ -77,20 +77,21 @@ impl C00Bin {
         for i in 0..0x68 {
             file.seek(SeekFrom::Current(4))?;
             let start = u32::read_from(file, ByteOrder::LittleEndian)?;
+            let assets = u32::read_from(file, ByteOrder::LittleEndian)?;
             if start >= 0x550000 {
                 edited_games.push(TickompilerBinary {
                     index: i,
                     start,
-                    assets: u32::read_from(file, ByteOrder::LittleEndian)?,
+                    assets,
                     data: vec![],
                 });
             }
-            file.seek(SeekFrom::Current(0x2C))?;
+            file.seek(SeekFrom::Current(0x28))?;
         }
-        file.seek(SeekFrom::Current(0x64))?; // This Shit Should Not Be In Base Dot Bin
+        file.seek(SeekFrom::Current(0x38))?; // This Shit Should Not Be In Base Dot Bin
 
         //tempo table
-        for _ in 0..0x1DD {
+        for _ in 0..0x1E0 {
             let id1 = u32::read_from(file, ByteOrder::LittleEndian)?; // padding
             let id2 = u32::read_from(file, ByteOrder::LittleEndian)?;
             let unk = u32::read_from(file, ByteOrder::LittleEndian)?;
@@ -104,21 +105,21 @@ impl C00Bin {
         for i in 0x100..0x110 {
             file.seek(SeekFrom::Current(4))?;
             let start = u32::read_from(file, ByteOrder::LittleEndian)?;
+            let assets = u32::read_from(file, ByteOrder::LittleEndian)?;
             if start >= 0x550000 {
                 edited_games.push(TickompilerBinary {
                     index: i,
-                    start: start,
-                    assets: u32::read_from(file, ByteOrder::LittleEndian)?,
+                    start,
+                    assets,
                     data: vec![],
                 });
             }
-            file.seek(SeekFrom::Current(0x1C))?;
+            file.seek(SeekFrom::Current(0x18))?;
         }
 
         // Step 2 - Read and extract tickflow .bin-s
         let mut func_order = vec![];
         let mut func_positions = vec![];
-        let mut func_positions_2 = vec![];
         for game in &mut edited_games {
             let mut queue = vec![(game.start, 0xFF)];
             if game.assets >= 0x550000 {
@@ -132,7 +133,6 @@ impl C00Bin {
             while pos < queue.len() {
                 func_order.push(queue[pos].0 - c00_type.base_offset());
                 func_positions.push(bindata.len() - argann_size);
-                func_positions_2.push(bindata.len());
                 str_pointers.extend(extract_tickflow(
                     &c00_type,
                     file,
@@ -253,7 +253,7 @@ pub fn extract_tickflow<F: Read + Seek>(
             args.push(u32::read_from(file, ByteOrder::LittleEndian)?);
         }
         if operations::is_scene_op(op_int) {
-            scene = *args.get(0).unwrap_or(&scene);
+            scene = args[0];
         } else if let Some(c) = operations::is_call_op(op_int) {
             let pointer_pos = args[c.args[0] as usize];
             let mut is_in_queue = false;
@@ -281,7 +281,7 @@ pub fn extract_tickflow<F: Read + Seek>(
                 offset: bindata.len() as u32 + (4 * (c.args[0] + 1)) as u32,
                 points_to: pointer_pos - c00_type.base_offset(),
             });
-        } else if let Some(c) = operations::is_string_op(op_int) {
+        } else if let Some(c) = operations::is_string_op(op_int, scene) {
             // Tickompiler argument annotation
             //  0xFFFFFFFF - Start section
             //  0x0000000X - X arguments
