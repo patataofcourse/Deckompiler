@@ -80,7 +80,7 @@ pub fn is_string_op(opcode: u32, scene: u32) -> Option<TickflowOp> {
         if op.command == opcode {
             if match op.scene {
                 Some(c) => c == scene,
-                None => false,
+                None => true,
             } {
                 return Some(op);
             }
