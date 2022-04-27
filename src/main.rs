@@ -27,13 +27,6 @@ enum Commands {
         /// [to be implemented] Optional tempo files to include in the .btk
         tempo: Vec<PathBuf>,
     },
-    /// Extracts all contents of a C00.bin file into a folder
-    C00 {
-        /// The C00.bin file to extract
-        c00: PathBuf,
-        /// Location for files to be extracted
-        out: PathBuf,
-    },
 }
 
 fn main() {
@@ -57,23 +50,6 @@ fn run() -> IOResult<()> {
             //TODO: tempos
             let mut f = File::create(btks_path)?;
             btks.to_btks_file(&mut f)?;
-        }
-        Commands::C00 { c00, out } => {
-            let mut f = File::open(c00)?;
-            let c00 = C00Bin::from_file(&mut f, C00Type::RHMPatch)?;
-            fs::create_dir_all(&out)?;
-            for tfbin in c00.tickflows {
-                let mut out = out.clone();
-                out.push(PathBuf::from(format!("{}.bin", tfbin.name())));
-                let mut bin = File::create(out)?;
-                tfbin.to_file(&mut bin)?;
-            }
-            for tempo in c00.tempos {
-                let mut out = out.clone();
-                out.push(PathBuf::from(format!("{}.tempo", tempo.name())));
-                let mut tfile = File::create(out)?;
-                tfile.write(tempo.to_tickompiler_file().as_bytes())?;
-            }
         }
     }
     Ok(())
