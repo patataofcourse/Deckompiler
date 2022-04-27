@@ -1,13 +1,6 @@
 use clap::{Parser, Subcommand};
-use deckompiler::{
-    btks::BTKS,
-    c00::{C00Bin, C00Type},
-};
-use std::{
-    fs::{self, File},
-    io::{Result as IOResult, Write},
-    path::PathBuf,
-};
+use deckompiler::btks::BTKS;
+use std::{fs::File, io::Result as IOResult, path::PathBuf};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
