@@ -12,7 +12,7 @@ const OPCODE_MASK: u32 = 0xFFFFC3FF;
 macro_rules! tf_op_args {
     ($cmdname:literal $(<$arg0:literal>)?, $args:expr $(, $scene:literal)? $(, is_unicode=$is_unicode:literal)? $(,)?) => {
         {
-        let command = ($cmdname & 0x3FF) $(+ $arg0 << 14)?;
+        let command = ($cmdname & 0x3FF) $(+ ($arg0 << 14))?;
 
         #[allow(unused_mut, unused_assignments)]
         let mut is_unicode = false;
@@ -36,7 +36,7 @@ macro_rules! tf_op_args {
 macro_rules! tf_op {
     ($cmdname:literal $(<$arg0:literal>)?) => {
         {
-            let command = ($cmdname & 0x3FF) $(+ $arg0 << 14)?;
+            let command = ($cmdname & 0x3FF) $(+ ($arg0 << 14))?;
             TickflowOp {
                 is_unicode: false,
                 command,
@@ -103,6 +103,7 @@ pub fn call_ops() -> Vec<TickflowOp> {
     vec![
         tf_op_args!(0x1<1>, vec![1]),
         tf_op_args!(0x2, vec![0]),
+        tf_op_args!(0x3<2>, vec![0]),
         tf_op_args!(0x6, vec![0]),
     ]
 }
