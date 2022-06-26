@@ -11,7 +11,7 @@ pub struct BTKS {
 }
 
 impl BTKS {
-    const REVISION: u32 = 0;
+    const REVISION: u32 = 2;
     const HEADER_SIZE: u32 = 0x10;
     const FLOW_HEADER: u32 = 0xC;
     const PTRO_HEADER: u32 = 0xC;
