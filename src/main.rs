@@ -39,8 +39,7 @@ fn run() -> IOResult<()> {
         } => {
             let mut f = File::open(bin)?;
             let size = f.metadata()?.len();
-            let btks = BTKS::from_tickompiler_binary(&mut f, size)?;
-            //TODO: tempos
+            let btks = BTKS::from_tickompiler_binary(&mut f, size, tempo)?;
             let mut f = File::create(btks_path)?;
             btks.to_btks_file(&mut f)?;
         }

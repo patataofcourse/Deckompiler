@@ -1,4 +1,8 @@
-use std::str::FromStr;
+use bytestream::{ByteOrder, StreamWriter};
+use std::{
+    io::{self, Write},
+    str::FromStr,
+};
 
 #[derive(Debug, Clone)]
 pub struct Tempo {
@@ -41,7 +45,7 @@ impl Tempo {
             let loop_val = if line == "" {
                 Self::LOOP_VAL_DEFAULT
             } else {
-                let (loop_str, line) = match line.split_once(" ") {
+                let (loop_str, _) = match line.split_once(" ") {
                     Some(c) => c,
                     None => (line, ""),
                 };
@@ -59,5 +63,21 @@ impl Tempo {
         }
 
         Some(Self { id, data })
+    }
+}
+
+impl StreamWriter for Tempo {
+    fn write_to<W: Write>(&self, buffer: &mut W, order: ByteOrder) -> io::Result<()> {
+        self.id.write_to(buffer, order)?;
+        (self.data.len() as u32).write_to(buffer, order)?;
+        for value in &self.data {
+            buffer.write(&match order {
+                ByteOrder::BigEndian => value.beats.to_be_bytes(),
+                ByteOrder::LittleEndian => value.beats.to_le_bytes(),
+            })?;
+            value.time.write_to(buffer, order)?;
+            value.loop_val.write_to(buffer, order)?;
+        }
+        Ok(())
     }
 }

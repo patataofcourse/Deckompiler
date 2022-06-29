@@ -1,6 +1,10 @@
 use crate::common::Tempo;
 use bytestream::{ByteOrder, StreamReader, StreamWriter};
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::{
+    fs::File,
+    io::{self, Read, Seek, SeekFrom, Write},
+    path::PathBuf,
+};
 
 #[derive(Debug, Clone)]
 pub struct BTKS {
@@ -15,7 +19,7 @@ impl BTKS {
     const HEADER_SIZE: u32 = 0x10;
     const FLOW_HEADER: u32 = 0xC;
     const PTRO_HEADER: u32 = 0xC;
-    //const TMPO_HEADER: u32 = 0x8; //TODO
+    const TMPO_HEADER: u32 = 0xC;
     const STRD_HEADER: u32 = 0x8;
 }
 
@@ -50,7 +54,11 @@ pub enum PointerType {
 }
 
 impl BTKS {
-    pub fn from_tickompiler_binary<F: Read + Seek>(f: &mut F, file_size: u64) -> io::Result<Self> {
+    pub fn from_tickompiler_binary<F: Read + Seek>(
+        f: &mut F,
+        file_size: u64,
+        tempos: Vec<PathBuf>,
+    ) -> io::Result<Self> {
         //not needed- but nice to print for info purposes
         let index = u32::read_from(f, ByteOrder::LittleEndian)?;
         println!("Index of file: {:#X}", index);
@@ -132,10 +140,30 @@ impl BTKS {
             _ => Some(strings), // TODO: maybe tickompiler doesn't add the 0xFFFFFFFE
                                 // if there's no strings???
         };
+
+        let tempos = if tempos.is_empty() {
+            None
+        } else {
+            let mut out = vec![];
+            for path in &tempos {
+                let mut f = File::open(path)?;
+                let mut tempo_data = String::new();
+                f.read_to_string(&mut tempo_data)?;
+                out.push(match Tempo::from_tickompiler_file(tempo_data) {
+                    Some(c) => c,
+                    None => Err(io::Error::new(
+                        io::ErrorKind::Other,
+                        format!("Couldn't open tempo file '{}'", path.to_str().unwrap()),
+                    ))?,
+                })
+            }
+            Some(out)
+        };
+
         return Ok(Self {
             flow: section_flow,
             ptro: pointers,
-            tmpo: None, //TODO: in the future, only make it None if there's no tempos
+            tmpo: tempos,
             strd: strings,
         });
     }
@@ -180,7 +208,22 @@ impl BTKS {
             }
         }
 
-        //TODO: tmpo
+        // ----------
+        //    TMPO
+        // ----------
+        if let Some(c) = &self.tmpo {
+            num_sections += 1;
+            f.write(b"TMPO")?; //magic
+            let mut tmpo_size: u32 = Self::TMPO_HEADER + c.len() as u32 * 8;
+            for tempo in c {
+                tmpo_size += tempo.data.len() as u32 * 0xC;
+            }
+            tmpo_size.write_to(f, ByteOrder::LittleEndian)?;
+            (c.len() as u32).write_to(f, ByteOrder::LittleEndian)?;
+            for tempo in c {
+                tempo.write_to(f, ByteOrder::LittleEndian)?;
+            }
+        }
 
         // ----------
         //    STRD
