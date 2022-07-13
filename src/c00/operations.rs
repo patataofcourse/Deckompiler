@@ -71,6 +71,7 @@ pub fn string_ops() -> Vec<TickflowOp> {
         tf_op_args!(0xB5, vec![0]),
         tf_op_args!(0x105, vec![0], 1),
         tf_op_args!(0x107, vec![0], 0xC),
+        tf_op_args!(0x107<1>, vec![0], 0xC),
         tf_op_args!(0x106, vec![0], 0x18),
         tf_op_args!(0x106, vec![0], 0x2A),
         tf_op_args!(0x10B, vec![0], 0x2C),
