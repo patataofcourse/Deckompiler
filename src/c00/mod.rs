@@ -118,9 +118,9 @@ impl C00Bin {
         }
 
         // Step 2 - Read and extract tickflow .bin-s
-        let mut func_order = vec![];
-        let mut func_positions = vec![];
         for game in &mut edited_games {
+            let mut func_order = vec![];
+            let mut func_positions = vec![];
             let mut queue = vec![(game.start, 0xFF)];
             if game.assets >= 0x550000 {
                 queue.push((game.assets, 0xFF));
