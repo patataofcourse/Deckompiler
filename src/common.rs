@@ -18,6 +18,13 @@ pub struct TempoVal {
 }
 
 impl Tempo {
+    pub fn is_streamed(&self) -> bool {
+        //TODO: currently always makes custom tempo IDs AAC since they can't be called for BCGRPs
+        !(self.id >= 0x01000101 && self.id <= 0x01000281)
+    }
+}
+
+impl Tempo {
     const LOOP_VAL_DEFAULT: u32 = 2;
 
     pub fn from_tickompiler_file(tempo: String) -> Option<Self> {
@@ -70,6 +77,7 @@ impl StreamWriter for Tempo {
     fn write_to<W: Write>(&self, buffer: &mut W, order: ByteOrder) -> io::Result<()> {
         self.id.write_to(buffer, order)?;
         (self.data.len() as u32).write_to(buffer, order)?;
+        (if self.is_streamed() { 1u32 } else { 0u32 }).write_to(buffer, order)?;
         for value in &self.data {
             buffer.write(&match order {
                 ByteOrder::BigEndian => value.beats.to_be_bytes(),

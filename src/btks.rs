@@ -16,7 +16,7 @@ pub struct BTKS {
 
 impl BTKS {
     const REVISION: u32 = 2;
-    const HEADER_SIZE: u32 = 0x10;
+    const HEADER_SIZE: u32 = 0x18;
     const FLOW_HEADER: u32 = 0xC;
     const PTRO_HEADER: u32 = 0xC;
     const TMPO_HEADER: u32 = 0xC;
@@ -178,8 +178,10 @@ impl BTKS {
         let size_pos = f.stream_position()?;
         0u32.write_to(f, ByteOrder::LittleEndian)?;
         Self::REVISION.write_to(f, ByteOrder::LittleEndian)?;
+        Self::HEADER_SIZE.write_to(f, ByteOrder::LittleEndian)?;
         let num_sections_pos = f.stream_position()?;
         0u32.write_to(f, ByteOrder::LittleEndian)?;
+        0u32.write_to(f, ByteOrder::LittleEndian)?; // US-EU-KR Megamix
 
         // ----------
         //    FLOW
