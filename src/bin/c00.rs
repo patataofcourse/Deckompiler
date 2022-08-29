@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use clap::Parser;
 use deckompiler::c00::{C00Bin, C00Type};
 use std::{
