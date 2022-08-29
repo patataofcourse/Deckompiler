@@ -17,7 +17,7 @@ enum Commands {
         bin: PathBuf,
         /// The path for the output .btk file
         btks: PathBuf,
-        /// [to be implemented] Optional tempo files to include in the .btk
+        /// Optional tempo files to include in the .btk
         tempo: Vec<PathBuf>,
     },
 }
