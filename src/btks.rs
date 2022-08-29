@@ -218,7 +218,7 @@ impl BTKS {
             f.write(b"TMPO")?; //magic
             let mut tmpo_size: u32 = Self::TMPO_HEADER + c.len() as u32 * 8;
             for tempo in c {
-                tmpo_size += tempo.data.len() as u32 * 0xC;
+                tmpo_size += tempo.data.len() as u32 * 0x10;
             }
             tmpo_size.write_to(f, ByteOrder::LittleEndian)?;
             (c.len() as u32).write_to(f, ByteOrder::LittleEndian)?;
