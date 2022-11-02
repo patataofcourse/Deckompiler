@@ -266,6 +266,9 @@ pub fn extract_tickflow<F: Read + Seek>(
             if !is_in_queue {
                 queue.push((pointer_pos, scene));
             }
+            if pointer_pos < c00_type.base_offset() {
+                panic!("trying to call tickflow at 0x{:08X}", pointer_pos);
+            }
             args[c.args[0] as usize] = pointer_pos - c00_type.base_offset();
 
             // Tickompiler argument annotation
