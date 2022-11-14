@@ -1,7 +1,7 @@
 [package]
 name = "deckompiler"
 description = "Tool for Tickompiler formats"
-version = "0.2.0-dev"
+version = "0.0.2"
 edition = "2021"
 default-run = "deckompiler"
 
@@ -9,7 +9,7 @@ default-run = "deckompiler"
 
 [dependencies]
 bytestream = "0.4"
-clap = {version = "3.2", features=["derive"]}
+clap = {version = "4.0", features=["derive"]}
 
 [[bin]]
 name = "c00"
