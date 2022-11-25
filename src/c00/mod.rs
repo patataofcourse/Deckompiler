@@ -256,34 +256,35 @@ pub fn extract_tickflow<F: Read + Seek>(
             scene = args[0];
         } else if let Some(c) = operations::is_call_op(op_int) {
             let pointer_pos = args[c.args[0] as usize];
-            let mut is_in_queue = false;
-            for (position, _) in &*queue {
-                if *position == pointer_pos {
-                    is_in_queue = true;
-                    break;
-                }
-            }
-            if !is_in_queue {
-                queue.push((pointer_pos, scene));
-            }
             if pointer_pos < c00_type.base_offset() {
-                panic!("trying to call tickflow at 0x{:08X}", pointer_pos);
+                println!("called game tickflow at 0x{:08X}", pointer_pos);
+            } else {
+                let mut is_in_queue = false;
+                for (position, _) in &*queue {
+                    if *position == pointer_pos {
+                        is_in_queue = true;
+                        break;
+                    }
+                }
+                if !is_in_queue {
+                    queue.push((pointer_pos, scene));
+                }
+                args[c.args[0] as usize] = pointer_pos - c00_type.base_offset();
+
+                // Tickompiler argument annotation
+                //  0xFFFFFFFF - Start section
+                //  0x00000001 - One argument
+                //  0x00000X00 - Pointer argument at position X = c.args[0]
+                (0xFFFFFFFFu32).write_to(bindata, ByteOrder::LittleEndian)?;
+                1u32.write_to(bindata, ByteOrder::LittleEndian)?;
+                ((c.args[0] as u32) << 8).write_to(bindata, ByteOrder::LittleEndian)?;
+                *argann_size += 3 * 4;
+
+                pointers.push(Pointer::Tickflow {
+                    offset: bindata.len() as u32 + (4 * (c.args[0] + 1)) as u32,
+                    points_to: pointer_pos - c00_type.base_offset(),
+                });
             }
-            args[c.args[0] as usize] = pointer_pos - c00_type.base_offset();
-
-            // Tickompiler argument annotation
-            //  0xFFFFFFFF - Start section
-            //  0x00000001 - One argument
-            //  0x00000X00 - Pointer argument at position X = c.args[0]
-            (0xFFFFFFFFu32).write_to(bindata, ByteOrder::LittleEndian)?;
-            1u32.write_to(bindata, ByteOrder::LittleEndian)?;
-            ((c.args[0] as u32) << 8).write_to(bindata, ByteOrder::LittleEndian)?;
-            *argann_size += 3 * 4;
-
-            pointers.push(Pointer::Tickflow {
-                offset: bindata.len() as u32 + (4 * (c.args[0] + 1)) as u32,
-                points_to: pointer_pos - c00_type.base_offset(),
-            });
         } else if let Some(c) = operations::is_string_op(op_int, scene) {
             // Tickompiler argument annotation
             //  0xFFFFFFFF - Start section
