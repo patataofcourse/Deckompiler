@@ -18,7 +18,7 @@ fn main() {
 fn run() -> IOResult<()> {
     let cli = Cli::parse();
     let mut f = File::open(cli.c00)?;
-    let c00 = C00Bin::from_file(&mut f, C00Type::RHMPatch)?;
+    let c00 = C00Bin::from_file(&mut f, C00Type::RHMPatch, cli.old)?;
     fs::create_dir_all(&cli.out)?;
     for tfbin in c00.tickflows {
         let mut out = cli.out.clone();
@@ -43,4 +43,10 @@ struct Cli {
     c00: PathBuf,
     /// Location for files to be extracted
     out: PathBuf,
+    #[clap(
+        short = 'o',
+        long = "old-c00",
+        help = "Enable this if you C00.bin predates the Aug 2017 gate patch"
+    )]
+    old: bool,
 }

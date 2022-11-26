@@ -64,7 +64,7 @@ impl C00Bin {
         self.c00_type.base_offset()
     }
 
-    pub fn from_file<F: Read + Seek>(file: &mut F, c00_type: C00Type) -> IOResult<Self> {
+    pub fn from_file<F: Read + Seek>(file: &mut F, c00_type: C00Type, old: bool) -> IOResult<Self> {
         let mut edited_games = vec![];
         let mut edited_tempos = vec![];
 
@@ -102,19 +102,21 @@ impl C00Bin {
         }
 
         //gate table
-        for i in 0x100..0x110 {
-            file.seek(SeekFrom::Current(4))?;
-            let start = u32::read_from(file, ByteOrder::LittleEndian)?;
-            let assets = u32::read_from(file, ByteOrder::LittleEndian)?;
-            if start >= 0x550000 {
-                edited_games.push(TickompilerBinary {
-                    index: i,
-                    start,
-                    assets,
-                    data: vec![],
-                });
+        if !old {
+            for i in 0x100..0x110 {
+                file.seek(SeekFrom::Current(4))?;
+                let start = u32::read_from(file, ByteOrder::LittleEndian)?;
+                let assets = u32::read_from(file, ByteOrder::LittleEndian)?;
+                if start >= 0x550000 {
+                    edited_games.push(TickompilerBinary {
+                        index: i,
+                        start,
+                        assets,
+                        data: vec![],
+                    });
+                }
+                file.seek(SeekFrom::Current(0x18))?;
             }
-            file.seek(SeekFrom::Current(0x18))?;
         }
 
         // Step 2 - Read and extract tickflow .bin-s
@@ -183,7 +185,7 @@ impl C00Bin {
         // Step 3 - Read and extract .tempo-s
         let mut tempos = vec![];
         for tempo in &edited_tempos {
-            // Note: for most (if not all) tempos, one ID is 0xFFFFFFFF
+            // Note: for all tempos, one ID is 0xFFFFFFFF
             let mut tempo_vals = vec![];
             file.seek(SeekFrom::Start(
                 tempo.pos as u64 - c00_type.base_offset() as u64,
@@ -257,7 +259,7 @@ pub fn extract_tickflow<F: Read + Seek>(
         } else if let Some(c) = operations::is_call_op(op_int) {
             let pointer_pos = args[c.args[0] as usize];
             if pointer_pos < c00_type.base_offset() {
-                println!("called game tickflow at 0x{:08X}", pointer_pos);
+                println!("Warning: called game tickflow at 0x{:08X}\n  This shouldn't happen except with older mods", pointer_pos);
             } else {
                 let mut is_in_queue = false;
                 for (position, _) in &*queue {
