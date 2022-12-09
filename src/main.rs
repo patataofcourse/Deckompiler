@@ -15,8 +15,8 @@ enum Commands {
     Btks {
         /// The path of the input .bin file
         bin: PathBuf,
-        /// The path for the output .btk file
-        btks: PathBuf,
+        /// The path for the output .btk file (defaults to BIN with .btk extension)
+        btks: Option<PathBuf>,
         /// Optional tempo files to include in the .btk
         tempo: Vec<PathBuf>,
     },
@@ -37,6 +37,11 @@ fn run() -> IOResult<()> {
             btks: btks_path,
             tempo,
         } => {
+            let btks_path = match btks_path {
+                Some(c) => c,
+                None => bin.clone().with_extension(".btk"),
+            };
+
             let mut f = File::open(bin)?;
             let size = f.metadata()?.len();
             let btks = BTKS::from_tickompiler_binary(&mut f, size, tempo)?;
