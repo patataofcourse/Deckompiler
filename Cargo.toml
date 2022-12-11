@@ -5,8 +5,6 @@ version = "0.0.2"
 edition = "2021"
 default-run = "deckompiler"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 bytestream = "0.4"
 clap = {version = "4.0", features=["derive"]}

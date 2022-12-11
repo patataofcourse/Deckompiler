@@ -43,10 +43,7 @@ struct Cli {
     c00: PathBuf,
     /// Location for files to be extracted
     out: PathBuf,
-    #[clap(
-        short = 'o',
-        long = "old-c00",
-        help = "Enable this if you C00.bin predates the Aug 2017 gate patch"
-    )]
+    /// Enable this if your C00.bin predates the Aug 2017 gate patch
+    #[clap(short = 'o', long = "old-c00")]
     old: bool,
 }
