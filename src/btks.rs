@@ -54,17 +54,50 @@ pub enum PointerType {
 }
 
 impl BTKS {
-    pub fn from_tickompiler_binary<F: Read + Seek>(
+    pub fn extract_tickflow<F: Read + Seek>(
         f: &mut F,
         file_size: u64,
         tempos: Vec<PathBuf>,
-    ) -> io::Result<Self> {
+    ) -> io::Result<(Self, Option<Self>)> {
         //not needed- but nice to print for info purposes
         let index = u32::read_from(f, ByteOrder::LittleEndian)?;
         println!("Index of file: {:#X}", index);
 
-        let start = u32::read_from(f, ByteOrder::LittleEndian)?;
-        u32::read_from(f, ByteOrder::LittleEndian)?; //Ignore assets sub  //TODO: check if index is a gate game - split the gate game file
+        if index & !0xF == 0x100 {
+            println!("This is an endless/gate game, which will extract *two* BTKS files.");
+            println!(
+                "The .gprac.btk one is the gate practice, to be loaded at slot {:#X}",
+                0x110 + (index & 0xC)
+            );
+            println!("WARNING: if your mod does not have a custom gate practice, do NOT use the .gprac.btk file!");
+            Ok((
+                Self::from_tickompiler_binary(f, file_size, tempos.clone(), false)?,
+                Some(Self::from_tickompiler_binary(f, file_size, tempos, true)?),
+            ))
+        } else {
+            Ok((
+                Self::from_tickompiler_binary(f, file_size, tempos, false)?,
+                None,
+            ))
+        }
+    }
+
+    pub fn from_tickompiler_binary<F: Read + Seek>(
+        f: &mut F,
+        file_size: u64,
+        tempos: Vec<PathBuf>,
+        is_gprac: bool,
+    ) -> io::Result<Self> {
+        f.seek(SeekFrom::Start(4))?;
+
+        let start: u32;
+        if is_gprac {
+            start = u32::read_from(f, ByteOrder::LittleEndian)?;
+            u32::read_from(f, ByteOrder::LittleEndian)?;
+        } else {
+            u32::read_from(f, ByteOrder::LittleEndian)?;
+            start = u32::read_from(f, ByteOrder::LittleEndian)?;
+        }
         let mut tickflow = vec![];
         // .bin tickflow loop or whatever
         // copied from tickompiler, modified to export to btks

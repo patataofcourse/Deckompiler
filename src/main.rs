@@ -39,14 +39,18 @@ fn run() -> IOResult<()> {
         } => {
             let btks_path = match btks_path {
                 Some(c) => c,
-                None => bin.clone().with_extension(".btk"),
+                None => bin.clone().with_extension("btk"),
             };
 
             let mut f = File::open(bin)?;
             let size = f.metadata()?.len();
-            let btks = BTKS::from_tickompiler_binary(&mut f, size, tempo)?;
-            let mut f = File::create(btks_path)?;
+            let (btks, gprac) = BTKS::extract_tickflow(&mut f, size, tempo)?;
+            let mut f = File::create(btks_path.clone())?;
             btks.to_btks_file(&mut f)?;
+            if let Some(c) = gprac {
+                let mut f = File::create(btks_path.with_extension("gprac.btk"))?;
+                c.to_btks_file(&mut f)?;
+            }
         }
     }
     Ok(())
