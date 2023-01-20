@@ -56,6 +56,7 @@ pub fn string_ops() -> Vec<TickflowOp> {
         tf_op_args!(0x3E, vec![1], is_unicode = true),
         tf_op_args!(0x5D, vec![1], is_unicode = true),
         tf_op_args!(0x5D<2>, vec![0], is_unicode = true),
+        tf_op_args!(0x61, vec![0], is_unicode = true),
         tf_op_args!(0x61<2>, vec![0], is_unicode = true),
         tf_op_args!(0x65<1>, vec![1]),
         tf_op_args!(0x66, vec![1]),
