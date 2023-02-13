@@ -1,13 +1,14 @@
 [package]
 name = "deckompiler"
 description = "Tool for Tickompiler formats"
-version = "0.0.2"
+version = "0.2.0"
 edition = "2021"
 default-run = "deckompiler"
+license-file = "LICENSE.md"
 
 [dependencies]
 bytestream = "0.4"
-clap = {version = "4.0", features=["derive"]}
+clap = { version = "4.0", features = ["derive"] }
 
 [[bin]]
 name = "c00"
