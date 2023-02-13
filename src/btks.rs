@@ -67,7 +67,7 @@ impl BTKS {
             println!("This is an endless/gate game, which will extract *two* BTKS files.");
             println!(
                 "The .gprac.btk one is the gate practice, to be loaded at slot {:#X}",
-                0x110 + (index & 0xC)
+                0x110 + ((index & 0xF) >> 2)
             );
             println!("WARNING: if your mod does not have a custom gate practice, do NOT use the .gprac.btk file!");
             Ok((
@@ -170,8 +170,7 @@ impl BTKS {
         };
         let strings = match strings.len() {
             0 => None,
-            _ => Some(strings), // TODO: maybe tickompiler doesn't add the 0xFFFFFFFE
-                                // if there's no strings???
+            _ => Some(strings),
         };
 
         let tempos = if tempos.is_empty() {
