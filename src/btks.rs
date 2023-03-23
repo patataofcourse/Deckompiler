@@ -38,9 +38,7 @@ pub struct Pointer {
 impl Pointer {
     pub fn to_bin(&self) -> [u8; 5] {
         let mut out = [0; 5];
-        for i in 0..4 {
-            out[i] = self.offset.to_le_bytes()[i];
-        }
+        out[4..].copy_from_slice(&self.offset.to_le_bytes());
         out[4] = self.ptype.clone() as u8;
         out
     }
@@ -144,7 +142,7 @@ impl BTKS {
             }
         }
         let mut strings = vec![0; (file_size - f.stream_position()?) as usize];
-        f.read(&mut strings)?;
+        f.read_exact(&mut strings)?;
         let stringpos = tickflow.len();
         //fix string pointers - stringpos, etc
         for ptr in &pointers {
@@ -192,19 +190,19 @@ impl BTKS {
             Some(out)
         };
 
-        return Ok(Self {
+        Ok(Self {
             flow: section_flow,
             ptro: pointers,
             tmpo: tempos,
             strd: strings,
-        });
+        })
     }
 
     pub fn to_btks_file<F: Write + Seek>(&self, f: &mut F) -> io::Result<()> {
         // ------------
         //    Header
         // ------------
-        f.write(b"BTKS")?; //magic
+        f.write_all(b"BTKS")?; //magic
         let mut size = Self::HEADER_SIZE;
         let mut num_sections = 1;
         let size_pos = f.stream_position()?;
@@ -218,27 +216,27 @@ impl BTKS {
         // ----------
         //    FLOW
         // ----------
-        f.write(b"FLOW")?; //magic
+        f.write_all(b"FLOW")?; //magic
         let flow_size = Self::FLOW_HEADER + self.flow.tickflow_data.len() as u32;
         size += flow_size;
         flow_size.write_to(f, ByteOrder::LittleEndian)?;
         self.flow
             .start_offset
             .write_to(f, ByteOrder::LittleEndian)?;
-        f.write(&self.flow.tickflow_data)?;
+        f.write_all(&self.flow.tickflow_data)?;
 
         // ----------
         //    PTRO
         // ----------
         if let Some(c) = &self.ptro {
             num_sections += 1;
-            f.write(b"PTRO")?; //magic
+            f.write_all(b"PTRO")?; //magic
             let ptro_size: u32 = Self::PTRO_HEADER + c.len() as u32 * 5;
             size += ptro_size;
             ptro_size.write_to(f, ByteOrder::LittleEndian)?;
             (c.len() as u32).write_to(f, ByteOrder::LittleEndian)?;
             for pointer in c {
-                f.write(&pointer.to_bin())?;
+                f.write_all(&pointer.to_bin())?;
             }
         }
 
@@ -247,7 +245,7 @@ impl BTKS {
         // ----------
         if let Some(c) = &self.tmpo {
             num_sections += 1;
-            f.write(b"TMPO")?; //magic
+            f.write_all(b"TMPO")?; //magic
             let mut tmpo_size: u32 = Self::TMPO_HEADER + c.len() as u32 * 8;
             for tempo in c {
                 tmpo_size += tempo.data.len() as u32 * 0x10;
@@ -264,11 +262,11 @@ impl BTKS {
         // ----------
         if let Some(c) = &self.strd {
             num_sections += 1;
-            f.write(b"STRD")?; //magic
+            f.write_all(b"STRD")?; //magic
             let strd_size: u32 = Self::STRD_HEADER + c.len() as u32;
             size += strd_size;
             strd_size.write_to(f, ByteOrder::LittleEndian)?;
-            f.write(&c)?;
+            f.write_all(c)?;
         }
 
         // Write filesize and number of sections

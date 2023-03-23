@@ -30,7 +30,7 @@ fn run() -> IOResult<()> {
         let mut out = cli.out.clone();
         out.push(PathBuf::from(format!("{}.tempo", tempo.name())));
         let mut tfile = File::create(out)?;
-        tfile.write(tempo.to_tickompiler_file().as_bytes())?;
+        tfile.write_all(tempo.to_tickompiler_file().as_bytes())?;
     }
     Ok(())
 }

@@ -153,11 +153,7 @@ impl C00Bin {
             for pointer in str_pointers {
                 if let Pointer::String { offset, points_to } = pointer {
                     let out_bytes = (points_to + bin_len as u32).to_le_bytes();
-                    let mut i = 0;
-                    for byte in &mut bindata[offset as usize..offset as usize + 4] {
-                        *byte = out_bytes[i];
-                        i += 1;
-                    }
+                    bindata[offset as usize..offset as usize + 4].copy_from_slice(&out_bytes);
                 } else if let Pointer::Tickflow { offset, points_to } = pointer {
                     let func_number = func_order
                         .iter()
@@ -165,17 +161,13 @@ impl C00Bin {
                         .expect("Couldn't find sub");
                     let func_pos = func_positions[func_number];
                     let out_bytes = (func_pos).to_le_bytes();
-                    let mut i = 0;
-                    for byte in &mut bindata[offset as usize..offset as usize + 4] {
-                        *byte = out_bytes[i];
-                        i += 1;
-                    }
+                    bindata[offset as usize..offset as usize + 4].copy_from_slice(&out_bytes);
                 }
             }
 
             // End Tickflow, string data only
             0xFFFFFFFEu32.write_to(&mut bindata, ByteOrder::LittleEndian)?;
-            (&mut bindata).write(&stringdata)?;
+            bindata.write_all(&stringdata)?;
 
             game.data = bindata;
             game.assets = func_positions[1] as u32;
@@ -311,33 +303,33 @@ pub fn extract_tickflow<F: Read + Seek>(
                 stringdata.extend(read_string(
                     c00_type,
                     file,
-                    (*args.get(*arg as usize).expect(&format!(
-                        "{:x}, {:x?}, {}, {:x}",
-                        op_int,
-                        args,
-                        scene,
-                        pos + c00_type.base_offset()
-                    )))
+                    (*args.get(*arg as usize).unwrap_or_else(|| {
+                        panic!(
+                            "{:x}, {:x?}, {}, {:x}",
+                            op_int,
+                            args,
+                            scene,
+                            pos + c00_type.base_offset()
+                        )
+                    }))
                     .into(),
                     c.is_unicode,
                 )?);
             }
-        } else if let Some(_) = operations::is_depth_op(op_int) {
+        } else if operations::is_depth_op(op_int).is_some() {
             #[allow(unused_assignments)]
             {
                 depth += 1;
             }
-        } else if let Some(_) = operations::is_undepth_op(op_int) {
+        } else if operations::is_undepth_op(op_int).is_some() {
             #[allow(unused_assignments)]
             {
                 if depth > 0 {
                     depth -= 1;
                 }
             }
-        } else if let Some(_) = operations::is_return_op(op_int) {
-            if depth <= 0 {
-                done = true;
-            }
+        } else if operations::is_return_op(op_int).is_some() && depth <= 0 {
+            done = true;
         }
         op_int.write_to(bindata, ByteOrder::LittleEndian)?;
         for arg in args {
@@ -379,9 +371,7 @@ pub fn read_string<F: Read + Seek>(
     }
 
     //padding
-    for _ in 0..(4 - string_data.len() % 4) {
-        string_data.push(0);
-    }
+    string_data.extend(vec![0; 4 - string_data.len() % 4]);
 
     file.seek(SeekFrom::Start(og_pos))?;
     Ok(string_data)
@@ -392,7 +382,7 @@ impl TickompilerBinary {
         self.index.write_to(file, ByteOrder::LittleEndian)?;
         self.start.write_to(file, ByteOrder::LittleEndian)?;
         self.assets.write_to(file, ByteOrder::LittleEndian)?;
-        file.write(&self.data)?;
+        file.write_all(&self.data)?;
         if file.stream_position()? % 4 != 0 {
             for _ in 0..8 - (file.stream_position()? % 4) {
                 0u8.write_to(file, ByteOrder::LittleEndian)?;

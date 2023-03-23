@@ -39,7 +39,7 @@ fn run() -> IOResult<()> {
         } => {
             let btks_path = match btks_path {
                 Some(c) => c,
-                None => bin.clone().with_extension("btk"),
+                None => bin.with_extension("btk"),
             };
 
             let mut f = File::open(bin)?;

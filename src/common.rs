@@ -36,30 +36,24 @@ impl Tempo {
         let mut data = vec![];
 
         for line in lines {
-            let (tempo_str, line) = line.split_once(" ")?;
+            let (tempo_str, line) = line.split_once(' ')?;
             let tempo = match f32::from_str(tempo_str) {
                 Ok(c) => c,
                 Err(_) => return None,
             };
-            let (beats_str, line) = match line.split_once(" ") {
+            let (beats_str, line) = match line.split_once(' ') {
                 Some(c) => c,
                 None => (line, ""),
             };
-            let beats = match f32::from_str(beats_str) {
-                Ok(c) => c,
-                Err(_) => return None,
-            };
-            let loop_val = if line == "" {
+            let beats = f32::from_str(beats_str).ok()?;
+            let loop_val = if line.is_empty() {
                 Self::LOOP_VAL_DEFAULT
             } else {
-                let (loop_str, _) = match line.split_once(" ") {
+                let (loop_str, _) = match line.split_once(' ') {
                     Some(c) => c,
                     None => (line, ""),
                 };
-                match u32::from_str(loop_str) {
-                    Ok(c) => c,
-                    Err(_) => return None,
-                }
+                u32::from_str(loop_str).ok()?
             };
             let time: u32 = (beats / tempo * 60.0 * 32000.0) as u32;
             data.push(TempoVal {
@@ -79,7 +73,7 @@ impl StreamWriter for Tempo {
         (self.data.len() as u32).write_to(buffer, order)?;
         (if self.is_streamed() { 1u32 } else { 0u32 }).write_to(buffer, order)?;
         for value in &self.data {
-            buffer.write(&match order {
+            buffer.write_all(&match order {
                 ByteOrder::BigEndian => value.beats.to_be_bytes(),
                 ByteOrder::LittleEndian => value.beats.to_le_bytes(),
             })?;

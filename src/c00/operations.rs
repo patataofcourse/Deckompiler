@@ -86,27 +86,19 @@ pub fn string_ops() -> Vec<TickflowOp> {
 
 pub fn is_string_op(opcode: u32, scene: u32) -> Option<TickflowOp> {
     let opcode = opcode & OPCODE_MASK;
-    for op in string_ops() {
-        if op.command == opcode {
-            if match op.scene {
+    string_ops().into_iter().find(|op| {
+        op.command == opcode
+            && match op.scene {
                 Some(c) => c == scene,
                 None => true,
-            } {
-                return Some(op);
             }
-        }
-    }
-    None
+    })
 }
 
 pub const SCENE_OP: u32 = 0x28; //no arg0
 
 pub fn is_scene_op(op: u32) -> bool {
-    if SCENE_OP == op & OPCODE_MASK {
-        true
-    } else {
-        false
-    }
+    SCENE_OP == op & OPCODE_MASK
 }
 
 pub fn call_ops() -> Vec<TickflowOp> {
@@ -120,12 +112,7 @@ pub fn call_ops() -> Vec<TickflowOp> {
 
 pub fn is_call_op(opcode: u32) -> Option<TickflowOp> {
     let opcode = opcode & OPCODE_MASK;
-    for op in call_ops() {
-        if op.command == opcode {
-            return Some(op);
-        }
-    }
-    None
+    call_ops().into_iter().find(|op| op.command == opcode)
 }
 
 pub fn depth_ops() -> Vec<TickflowOp> {
@@ -142,12 +129,7 @@ pub fn depth_ops() -> Vec<TickflowOp> {
 
 pub fn is_depth_op(opcode: u32) -> Option<TickflowOp> {
     let opcode = opcode & OPCODE_MASK;
-    for op in depth_ops() {
-        if op.command == opcode {
-            return Some(op);
-        }
-    }
-    None
+    depth_ops().into_iter().find(|op| op.command == opcode)
 }
 
 pub fn undepth_ops() -> Vec<TickflowOp> {
@@ -156,12 +138,7 @@ pub fn undepth_ops() -> Vec<TickflowOp> {
 
 pub fn is_undepth_op(opcode: u32) -> Option<TickflowOp> {
     let opcode = opcode & OPCODE_MASK;
-    for op in undepth_ops() {
-        if op.command == opcode {
-            return Some(op);
-        }
-    }
-    None
+    undepth_ops().into_iter().find(|op| op.command == opcode)
 }
 
 pub fn return_ops() -> Vec<TickflowOp> {
@@ -170,10 +147,5 @@ pub fn return_ops() -> Vec<TickflowOp> {
 
 pub fn is_return_op(opcode: u32) -> Option<TickflowOp> {
     let opcode = opcode & OPCODE_MASK;
-    for op in return_ops() {
-        if op.command == opcode {
-            return Some(op);
-        }
-    }
-    None
+    return_ops().into_iter().find(|op| op.command == opcode)
 }
