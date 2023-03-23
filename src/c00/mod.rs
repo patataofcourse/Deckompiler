@@ -307,10 +307,18 @@ pub fn extract_tickflow<F: Read + Seek>(
                     points_to: stringdata.len() as u32,
                 });
 
+                let pos = file.stream_position().unwrap() as u32;
                 stringdata.extend(read_string(
                     c00_type,
                     file,
-                    args[*arg as usize].into(),
+                    (*args.get(*arg as usize).expect(&format!(
+                        "{:x}, {:x?}, {}, {:x}",
+                        op_int,
+                        args,
+                        scene,
+                        pos + c00_type.base_offset()
+                    )))
+                    .into(),
                     c.is_unicode,
                 )?);
             }

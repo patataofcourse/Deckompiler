@@ -91,7 +91,7 @@ impl BTKS {
         f.seek(SeekFrom::Start(4))?;
 
         let start: u32;
-        if is_gprac {
+        if !is_gprac {
             start = u32::read_from(f, ByteOrder::LittleEndian)?;
             u32::read_from(f, ByteOrder::LittleEndian)?;
         } else {
