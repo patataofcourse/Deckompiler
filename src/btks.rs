@@ -38,7 +38,7 @@ pub struct Pointer {
 impl Pointer {
     pub fn to_bin(&self) -> [u8; 5] {
         let mut out = [0; 5];
-        out[4..].copy_from_slice(&self.offset.to_le_bytes());
+        out[..4].copy_from_slice(&self.offset.to_le_bytes());
         out[4] = self.ptype.clone() as u8;
         out
     }
