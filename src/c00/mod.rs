@@ -160,7 +160,7 @@ impl C00Bin {
                         .position(|&r| r == points_to)
                         .expect("Couldn't find sub");
                     let func_pos = func_positions[func_number];
-                    let out_bytes = (func_pos).to_le_bytes();
+                    let out_bytes = (func_pos as u32).to_le_bytes();
                     bindata[offset as usize..offset as usize + 4].copy_from_slice(&out_bytes);
                 }
             }
