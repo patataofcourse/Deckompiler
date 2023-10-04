@@ -1,3 +1,7 @@
+use std::ops::RangeInclusive;
+
+use tickflow_parse::old::ParsedValue;
+
 pub struct CmdDef {
     pub num: u16,
     pub arg0: Arg0Type,
@@ -16,6 +20,18 @@ impl CmdDef {
         args: &'static [ArgType],
     ) -> (&'static str, Self) {
         (name, Self::new(num, arg0, args))
+    }
+
+    pub(crate) fn calc_arg_range(&self) -> RangeInclusive<usize> {
+        let end = self.args.len();
+        let start = self
+            .args
+            .iter()
+            .enumerate()
+            .find(|(_, c)| matches!(c, Opt(_)))
+            .map(|c| c.0)
+            .unwrap_or(end);
+        start..=end
     }
 }
 
@@ -37,8 +53,100 @@ pub enum Arg0Type {
     Any,
 }
 
+pub fn resolve_command(
+    cmd: &String,
+    arg0: Option<u32>,
+    mut args: Vec<ParsedValue>,
+) -> Result<(u16, u32, Vec<ParsedValue>), ResolveError> {
+    let mut out = None;
+    let mut is_arg0d = false;
+    for def in TICKOMPILER_COMMANDS {
+        if cmd == def.0 {
+            match def.1.arg0 {
+                Set(_) if arg0.is_some() => Err(ResolveError::Arg0IsSet(cmd.clone()))?,
+                Set(c) => out = Some((def.1.num, c, args)),
+                Argument => {
+                    out = {
+                        is_arg0d = true;
+                        if args.is_empty() {
+                            Err(ResolveError::WrongArgCount {
+                                cmd: cmd.clone(),
+                                expected: def.1.calc_arg_range(),
+                                got: 0,
+                            })?
+                        }
+                        let c = args.remove(0);
+                        let ParsedValue::Integer(arg0) = c else {
+                            Err(ResolveError::WrongArgType {
+                                cmd: cmd.clone(),
+                                arg: 0,
+                                expected: "integer".to_string(),
+                                got: match c {
+                                    ParsedValue::Label(_) => "label/loc",
+                                    ParsedValue::String { .. } => "string",
+                                    ParsedValue::Integer(_) => unreachable!(),
+                                }
+                                .to_string(),
+                            })?
+                        };
+                        Some((def.1.num, arg0 as u32, args))
+                    }
+                }
+                Any => out = Some((def.1.num, arg0.unwrap_or(0), args)),
+            }
+            break;
+        }
+    }
+    //TODO: arg checker
+    out.ok_or(ResolveError::Undefined(cmd.clone()))
+}
+
+pub enum ResolveError {
+    WrongArgCount {
+        cmd: String,
+        expected: RangeInclusive<usize>,
+        got: usize,
+    },
+    WrongArgType {
+        cmd: String,
+        arg: usize,
+        expected: String,
+        got: String,
+    },
+    Arg0IsSet(String),
+    Undefined(String),
+}
+
+impl From<ResolveError> for std::io::Error {
+    fn from(value: ResolveError) -> Self {
+        Self::new(
+            std::io::ErrorKind::Other,
+            match value {
+                ResolveError::WrongArgCount { cmd, expected, got } => format!(
+                    "Command {cmd} takes {}-{} arguments, but {got} were given",
+                    expected.start(),
+                    expected.end()
+                ),
+                ResolveError::WrongArgType {
+                    cmd,
+                    arg,
+                    expected,
+                    got,
+                } => format!(
+                    "Command {cmd}'s argument #{} is of type '{expected}', but '{got}' was given",
+                    arg
+                ),
+                ResolveError::Arg0IsSet(cmd) => {
+                    format!("Command {cmd} has a predefined Arg0, so it can't be manually given")
+                }
+                ResolveError::Undefined(cmd) => format!("Command {cmd} not found"),
+            },
+        )
+    }
+}
+
 use Arg0Type::*;
-use ArgType::*;
+use ArgType::{Int, Label, Opt};
 
 // a bunch of these commands have arg0 variations
 // remove argument checking for those

@@ -13,3 +13,6 @@ tickflow-parse = { git = "https://github.com/patataofcourse/tickflow-rs", branch
 
 [[bin]]
 name = "c00"
+
+[[bin]]
+name = "not_tickompiler"
