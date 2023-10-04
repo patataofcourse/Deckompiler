@@ -3,7 +3,7 @@ use std::{
     fs::File,
     path::{Path, PathBuf},
 };
-use tickflow_parse::old::{parse_from_text, Context, ParsedStatement, ParsedValue};
+use tickflow_parse::old::{parse_from_text, Context, ParsedStatement};
 
 pub mod commands;
 
@@ -59,10 +59,20 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
                 commands::resolve_command(c, *arg0, args.clone())?
             }
         };
-        todo!()
+        //TODO: tickflow-parse should take care of this
+        if args.len() > 15 {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "too many arguments given to a command",
+            ))?
+        }
+
+        let op_int = (cmd & 0x3FF) as u32 + ((args.len() & 0xF) << 10) as u32 + (arg0 << 14);
+        todo!("writing arguments with argument annotations (ew)")
     }
     Ok(())
 }
+
 fn to_btks(mut out: File, cmds: Context) -> std::io::Result<()> {
     todo!()
 }
