@@ -1,7 +1,8 @@
 [package]
 name = "deckompiler"
 description = "Tool for Tickompiler formats"
-version = "0.2.1"
+authors = ["patataofcourse"]
+version = "0.3.0"
 edition = "2021"
 default-run = "deckompiler"
 license-file = "LICENSE.md"

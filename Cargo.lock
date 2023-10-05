@@ -122,7 +122,7 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "deckompiler"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "bytestream",
  "clap",
@@ -250,7 +250,7 @@ dependencies = [
 [[package]]
 name = "tickflow-parse"
 version = "0.0.0"
-source = "git+https://github.com/patataofcourse/tickflow-rs?branch=compiler#e22a92907e0fc5b51275762ce083bd982cc274e5"
+source = "git+https://github.com/patataofcourse/tickflow-rs?branch=compiler#3d02d838d9f8679be1a695861456ec6415131249"
 dependencies = [
  "lazy_static",
  "nom",

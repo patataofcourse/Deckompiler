@@ -2,6 +2,7 @@ use std::ops::RangeInclusive;
 
 use tickflow_parse::old::ParsedValue;
 
+#[derive(Clone)]
 pub struct CmdDef {
     pub num: u16,
     pub arg0: Arg0Type,
@@ -35,6 +36,7 @@ impl CmdDef {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ArgType {
     Int,
     String(bool),
@@ -47,6 +49,7 @@ pub const AString: ArgType = ArgType::String(false);
 #[allow(non_upper_case_globals)]
 pub const UString: ArgType = ArgType::String(true);
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Arg0Type {
     Set(u32),
     Argument,
@@ -64,7 +67,7 @@ pub fn resolve_command(
         if cmd == def.0 {
             match def.1.arg0 {
                 Set(_) if arg0.is_some() => Err(ResolveError::Arg0IsSet(cmd.clone()))?,
-                Set(c) => out = Some((def.1.num, c, args)),
+                Set(c) => out = Some((def.1.clone(), c)),
                 Argument => {
                     out = {
                         is_arg0d = true;
@@ -83,22 +86,120 @@ pub fn resolve_command(
                                 expected: "integer".to_string(),
                                 got: match c {
                                     ParsedValue::Label(_) => "label/loc",
-                                    ParsedValue::String { .. } => "string",
+                                    ParsedValue::String {
+                                        is_unicode: false, ..
+                                    } => "string",
+                                    ParsedValue::String {
+                                        is_unicode: true, ..
+                                    } => "unicode string",
                                     ParsedValue::Integer(_) => unreachable!(),
                                 }
                                 .to_string(),
                             })?
                         };
-                        Some((def.1.num, arg0 as u32, args))
+                        Some((def.1.clone(), arg0 as u32))
                     }
                 }
-                Any => out = Some((def.1.num, arg0.unwrap_or(0), args)),
+                Any => out = Some((def.1.clone(), arg0.unwrap_or(0))),
             }
             break;
         }
     }
     //TODO: arg checker
-    out.ok_or(ResolveError::Undefined(cmd.clone()))
+    match out {
+        Some((def, arg0)) => {
+            if def.arg0 == Any && arg0 != 0 {
+                // skip arg checker if non-standard arg0
+                return Ok((def.num, arg0, args));
+            }
+            let rng = def.calc_arg_range();
+            if !rng.contains(&args.len()) {
+                Err(ResolveError::WrongArgCount {
+                    cmd: cmd.clone(),
+                    expected: rng,
+                    got: args.len(),
+                })?
+            }
+            let mut new_args = vec![];
+            for (i, arg) in args.into_iter().enumerate() {
+                match &arg {
+                    ParsedValue::Integer(_) => {
+                        if matches!(def.args[i], Int | Opt(_)) {
+                            new_args.push(arg)
+                        } else {
+                            Err(ResolveError::WrongArgType {
+                                cmd: cmd.clone(),
+                                arg: i + is_arg0d as usize,
+                                expected: {
+                                    match def.args[i] {
+                                        Label => "label",
+                                        c if c == AString => "string",
+                                        c if c == UString => "unicode string",
+                                        _ => unreachable!(),
+                                    }
+                                    .to_string()
+                                },
+                                got: "integer".to_string(),
+                            })?
+                        }
+                    }
+                    ParsedValue::String { is_unicode, .. } => {
+                        if matches!(def.args[i], c if (c == UString) == *is_unicode) {
+                            new_args.push(arg)
+                        } else {
+                            Err(ResolveError::WrongArgType {
+                                cmd: cmd.clone(),
+                                arg: i + is_arg0d as usize,
+                                expected: {
+                                    match def.args[i] {
+                                        Int | Opt(_) => "integer",
+                                        Label => "label",
+                                        _ => unreachable!(),
+                                    }
+                                    .to_string()
+                                },
+                                got: if *is_unicode {
+                                    "unicode string"
+                                } else {
+                                    "string"
+                                }
+                                .to_string(),
+                            })?
+                        }
+                    }
+                    ParsedValue::Label(_) => {
+                        if matches!(def.args[i], Label) {
+                            new_args.push(arg)
+                        } else {
+                            Err(ResolveError::WrongArgType {
+                                cmd: cmd.clone(),
+                                arg: i + is_arg0d as usize,
+                                expected: {
+                                    match def.args[i] {
+                                        Int | Opt(_) => "integer",
+                                        c if c == AString => "string",
+                                        c if c == UString => "unicode string",
+                                        _ => unreachable!(),
+                                    }
+                                    .to_string()
+                                },
+                                got: "label".to_string(),
+                            })?
+                        }
+                    }
+                }
+            }
+            if new_args.len() < def.args.len() {
+                for arg in def.args.iter().skip(new_args.len()) {
+                    let Opt(v) = arg else { unreachable!() };
+                    new_args.push(ParsedValue::Integer(*v));
+                }
+            }
+            assert_eq!(new_args.len(), def.args.len());
+            Ok((def.num, arg0, new_args))
+        }
+        None => Err(ResolveError::Undefined(cmd.clone()))?,
+    }
 }
 
 pub enum ResolveError {
