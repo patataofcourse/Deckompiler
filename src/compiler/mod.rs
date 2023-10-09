@@ -4,7 +4,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use tickflow_parse::old::{parse_from_text, Context, ParsedStatement};
+use tickflow_parse::old::{parse_from_text, CommandName, Context, ParsedStatement};
 
 pub mod commands;
 
@@ -34,42 +34,51 @@ pub fn compile_file(
 }
 
 fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
+    let mut cmd_size = 0;
+    let mut resolved_cmds = vec![];
+    for cmd in cmds.parsed_cmds {
+        let ParsedStatement::Command { cmd, arg0, args } = cmd else {
+            resolved_cmds.push(cmd);
+            continue;
+        };
+        let (cmd, arg0, args) = match cmd {
+            CommandName::Raw(c) => (c as u16, arg0.unwrap_or(0), args.clone()),
+            CommandName::Named(c) => commands::resolve_command(&c, arg0, args.clone())?,
+        };
+        cmd_size += 4 * (1 + args.len());
+        resolved_cmds.push(ParsedStatement::Command {
+            cmd: CommandName::Raw(cmd as i32),
+            arg0: Some(arg0),
+            args,
+        });
+    }
+
     // "header"
     cmds.index.write_to(&mut out, LE)?;
-    cmds.start[0].write_to(&mut out, LE)?;
-    cmds.start[1].write_to(&mut out, LE)?;
+    cmds.start[0]
+        .unwrap_or(get_pos_of_label(&resolved_cmds, "start").unwrap())
+        .write_to(&mut out, LE)?;
+    cmds.start[1]
+        .unwrap_or(get_pos_of_label(&resolved_cmds, "assets").unwrap())
+        .write_to(&mut out, LE)?;
 
-    let labels = cmds
-        .parsed_cmds
-        .iter()
-        .filter(|c| matches!(c, ParsedStatement::Label(..)));
-    let cmds = cmds
-        .parsed_cmds
+    let cmds = resolved_cmds
         .iter()
         .filter(|c| matches!(c, ParsedStatement::Command { .. }));
     let mut str_data = vec![];
 
-    let mut cmd_size = 0;
-    for cmd in cmds.clone() {
-        let ParsedStatement::Command { args, .. } = cmd else {
-            unreachable!()
-        };
-        cmd_size += 4 * (1 + args.len());
-    }
-
     for cmd in cmds {
-        let ParsedStatement::Command { cmd, arg0, args } = cmd else {
-            unreachable!()
+        let ParsedStatement::Command {
+            cmd: CommandName::Raw(cmd),
+            arg0: Some(arg0),
+            args,
+        } = cmd
+        else {
+            unreachable!();
         };
-        let (cmd, arg0, args) = match cmd {
-            tickflow_parse::old::CommandName::Raw(c) => {
-                (*c as u16, arg0.unwrap_or(0), args.clone())
-            }
-            tickflow_parse::old::CommandName::Named(c) => {
-                commands::resolve_command(c, *arg0, args.clone())?
-            }
-        };
-        //TODO: tickflow-parse should take care of this
+
+        let cmd = *cmd as u16;
+
         if args.len() > 15 {
             Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -85,19 +94,12 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
                 tickflow_parse::old::ParsedValue::Integer(c) => parsed_args.push(*c),
                 tickflow_parse::old::ParsedValue::Label(lab) => {
                     arg_anns.push((i as u32) << 8);
-                    parsed_args.push(
-                        *labels
-                            .clone()
-                            .map(|c| {
-                                let ParsedStatement::Label(name, pos) = c else {
-                                    unreachable!()
-                                };
-                                (name, pos)
-                            })
-                            .find(|(name, _)| name == &lab)
-                            .unwrap()
-                            .1 as i32,
-                    )
+                    parsed_args.push(get_pos_of_label(&resolved_cmds, lab).ok_or(
+                        std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Could not find label {lab}"),
+                        ),
+                    )?)
                 }
                 tickflow_parse::old::ParsedValue::String { value, is_unicode } => {
                     arg_anns.push(((i as u32) << 8) + if *is_unicode { 1 } else { 2 });
@@ -137,4 +139,19 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
 
 fn to_btks(mut out: File, cmds: Context) -> std::io::Result<()> {
     todo!()
+}
+
+fn get_pos_of_label(cmds: &[ParsedStatement], name: &str) -> Option<i32> {
+    let mut cumulative_len = 0;
+    for statement in cmds {
+        match statement {
+            ParsedStatement::Label(c) => {
+                if c == name {
+                    return Some(cumulative_len);
+                }
+            }
+            ParsedStatement::Command { args, .. } => cumulative_len += 4 * (1 + args.len() as i32),
+        }
+    }
+    None
 }
