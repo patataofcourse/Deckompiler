@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "aho-corasick"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea5d730647d4fadd988536d06fecce94b7b4f2a7efdae548f1cf4b63205518ab"
+checksum = "b2969dcb958b36655471fc61f7e416fa76033bdd4bfed0678d8fee1e2d07a1f0"
 dependencies = [
  "memchr",
 ]
@@ -250,7 +250,7 @@ dependencies = [
 [[package]]
 name = "tickflow-parse"
 version = "0.0.0"
-source = "git+https://github.com/patataofcourse/tickflow-rs?branch=compiler#77c5b4937f3ee1bf2d25101fc0bddb5c013869bb"
+source = "git+https://github.com/patataofcourse/tickflow-rs?branch=compiler#9b47e10211c9abb659e15c96afab19ead726a7a9"
 dependencies = [
  "lazy_static",
  "nom",

@@ -22,11 +22,21 @@ pub fn compile_file(
         std::io::ErrorKind::Other,
         "invalid path for a file",
     ))?;
-    let cmds = Context::parse_file(parse_from_text(&mut File::open(&in_)?)?, |c| {
-        let mut cwd = PathBuf::from(cwd);
-        cwd.push(c);
-        File::open(cwd)
-    })?;
+    let fname = in_
+        .as_ref()
+        .file_name()
+        .map(|c| c.to_str())
+        .unwrap_or(None)
+        .unwrap_or("");
+    let cmds = Context::parse_file(
+        parse_from_text(fname, &mut File::open(&in_)?)?,
+        |c| {
+            let mut cwd = PathBuf::from(cwd);
+            cwd.push(c);
+            File::open(cwd)
+        },
+        fname,
+    )?;
     match out_filetype {
         CompiledFileType::Tickompiler => to_btkm(File::create(out)?, cmds).map_err(Into::into),
         CompiledFileType::BTKS => to_btks(File::create(out)?, cmds).map_err(Into::into),
