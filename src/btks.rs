@@ -119,6 +119,10 @@ impl BTKS {
                         ptr_args.push(ann_arg)
                     } else if anncode == 1 || anncode == 2 {
                         str_args.push(ann_arg)
+                    } else if anncode == 3 {
+                        todo!();
+                    } else {
+                        unreachable!()
                     }
                 }
                 cmd = u32::read_from(f, ByteOrder::LittleEndian)?;

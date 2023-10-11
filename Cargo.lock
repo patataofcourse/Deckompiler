@@ -250,7 +250,7 @@ dependencies = [
 [[package]]
 name = "tickflow-parse"
 version = "0.0.0"
-source = "git+https://github.com/patataofcourse/tickflow-rs?branch=compiler#9b47e10211c9abb659e15c96afab19ead726a7a9"
+source = "git+https://github.com/patataofcourse/tickflow-rs?branch=compiler#96f28c44ac184398a1d8360b3274fe38aebc1c15"
 dependencies = [
  "lazy_static",
  "nom",

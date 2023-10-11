@@ -4,7 +4,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use tickflow_parse::old::{parse_from_text, CommandName, Context, ParsedStatement};
+use tickflow_parse::old::{parse_from_text, CommandName, Context, ParsedStatement, ParsedValue};
 
 pub mod commands;
 
@@ -53,6 +53,16 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
         };
         let (cmd, arg0, args) = match cmd {
             CommandName::Raw(c) => (c as u16, arg0.unwrap_or(0), args.clone()),
+            CommandName::Named(c)
+                if *c == "bytes" || *c == "int" && !arg0.map(|c| c == 0).unwrap_or(true) =>
+            {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "bytes/int commands don't take an arg0",
+                ))?
+            }
+            CommandName::Named(c) if *c == "bytes" => (0xFFFF, 0, args.clone()),
+            CommandName::Named(c) if *c == "int" => (0xFFFF, 1, args.clone()),
             CommandName::Named(c) => commands::resolve_command(&c, arg0, args.clone())?,
         };
         cmd_size += 4 * (1 + args.len());
@@ -94,6 +104,41 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
                 std::io::ErrorKind::Other,
                 "too many arguments given to a command",
             ))?
+        }
+
+        //TODO: use argument annotation 3 instead
+        if cmd == 0xFFFF {
+            match arg0 {
+                0 => {
+                    for arg in args {
+                        let ParsedValue::Integer(arg) = arg else {
+                            Err(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                "bytes args must be ints",
+                            ))?
+                        };
+                        (*arg as u8).write_to(&mut out, LE)?;
+                    }
+                    if args.len() % 4 != 0 {
+                        for _ in 0..(4 - (args.len() % 4)) {
+                            (0u8).write_to(&mut out, LE)?;
+                        }
+                    }
+                }
+                1 => {
+                    for arg in args {
+                        let ParsedValue::Integer(arg) = arg else {
+                            Err(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                "int args must be ints",
+                            ))?
+                        };
+                        arg.write_to(&mut out, LE)?;
+                    }
+                }
+                _ => unreachable!(),
+            }
+            continue;
         }
 
         let op_int = (cmd & 0x3FF) as u32 + ((args.len() & 0xF) << 10) as u32 + (arg0 << 14);
