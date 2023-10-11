@@ -105,7 +105,6 @@ pub fn resolve_command(
             break;
         }
     }
-    //TODO: arg checker
     match out {
         Some((def, arg0)) => {
             if def.arg0 == Any && arg0 != 0 {
@@ -329,4 +328,5 @@ pub const TICKOMPILER_COMMANDS: &[(&str, CmdDef)] = &[
     CmdDef::named("rotate_gradual", 0x80, Set(1), &[Int, Int, Int, Int, Int]),
     CmdDef::named("star", 0xAE, Any, &[Int]),
     CmdDef::named("debug", 0xB5, Any, &[AString]),
+    CmdDef::named("random", 0xB8, Argument, &[]),
 ];

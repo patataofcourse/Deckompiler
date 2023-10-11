@@ -2,11 +2,14 @@
 
 use clap::Parser;
 use std::{fs, path::PathBuf};
-use tickflow_parse::Result;
+use tickflow_parse::{Error, Result};
 
 fn main() {
     match run() {
         Ok(_) => (),
+        Err(Error::IoError(e)) if e.kind() == std::io::ErrorKind::Other => {
+            println!("deckompiler error: {}", e)
+        }
         Err(e) => println!("{}", e),
     }
 }
@@ -31,11 +34,8 @@ fn run() -> Result<()> {
 )]
 /// me when i        when i compile tickflow
 struct Cli {
-    /// The tickflow files to compile
+    /// The tickflow file to compile
     in_: PathBuf,
-    /// Location for files to be compiled to
+    /// Location for the file to be compiled to
     out: PathBuf,
-    #[clap(hide = true, short = 't')]
-    /// for le testing
-    tickompiler_path: Option<PathBuf>,
 }
