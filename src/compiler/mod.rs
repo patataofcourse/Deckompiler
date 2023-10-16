@@ -1,7 +1,7 @@
 use bytestream::{ByteOrder::LittleEndian as LE, StreamWriter};
 use std::{
     fs::File,
-    io::Write,
+    io::{Seek, Write},
     path::{Path, PathBuf},
 };
 use tickflow_parse::old::{parse_from_text, CommandName, Context, ParsedStatement, ParsedValue};
@@ -53,9 +53,7 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
         };
         let (cmd, arg0, args) = match cmd {
             CommandName::Raw(c) => (c as u16, arg0.unwrap_or(0), args.clone()),
-            CommandName::Named(c)
-                if *c == "bytes" || *c == "int" && !arg0.map(|c| c == 0).unwrap_or(true) =>
-            {
+            CommandName::Named(c) if (*c == "bytes" || *c == "int") && arg0.unwrap_or(0) != 0 => {
                 Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     "bytes/int commands don't take an arg0",
@@ -65,7 +63,20 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
             CommandName::Named(c) if *c == "int" => (0xFFFF, 1, args.clone()),
             CommandName::Named(c) => commands::resolve_command(&c, arg0, args.clone())?,
         };
-        cmd_size += 4 * (1 + args.len());
+        if cmd != 0xFFFF {
+            cmd_size += 4 * (1 + args.len());
+        } else if arg0 == 0 {
+            cmd_size += args.len()
+                + if args.len() % 4 != 0 {
+                    4 - args.len() % 4
+                } else {
+                    0
+                };
+        } else if arg0 == 1 {
+            cmd_size += args.len() * 4;
+        } else {
+            unreachable!();
+        }
         resolved_cmds.push(ParsedStatement::Command {
             cmd: CommandName::Raw(cmd as i32),
             arg0: Some(arg0),
@@ -76,10 +87,10 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
     // "header"
     cmds.index.write_to(&mut out, LE)?;
     cmds.start[0]
-        .unwrap_or(get_pos_of_label(&resolved_cmds, "start").unwrap())
+        .unwrap_or_else(|| get_pos_of_label(&resolved_cmds, "start").unwrap())
         .write_to(&mut out, LE)?;
     cmds.start[1]
-        .unwrap_or(get_pos_of_label(&resolved_cmds, "assets").unwrap())
+        .unwrap_or_else(|| get_pos_of_label(&resolved_cmds, "assets").unwrap())
         .write_to(&mut out, LE)?;
 
     let cmds = resolved_cmds
@@ -106,10 +117,13 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
             ))?
         }
 
-        //TODO: use argument annotation 3 instead
         if cmd == 0xFFFF {
+            (-1i32).write_to(&mut out, LE)?;
+            1.write_to(&mut out, LE)?;
             match arg0 {
                 0 => {
+                    let ann = 3 + ((args.len() as u32) << 8);
+                    ann.write_to(&mut out, LE)?;
                     for arg in args {
                         let ParsedValue::Integer(arg) = arg else {
                             Err(std::io::Error::new(
@@ -126,6 +140,8 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
                     }
                 }
                 1 => {
+                    let ann = 3 + ((args.len() as u32 * 4) << 8);
+                    ann.write_to(&mut out, LE)?;
                     for arg in args {
                         let ParsedValue::Integer(arg) = arg else {
                             Err(std::io::Error::new(
@@ -205,7 +221,27 @@ fn get_pos_of_label(cmds: &[ParsedStatement], name: &str) -> Option<i32> {
                     return Some(cumulative_len);
                 }
             }
-            ParsedStatement::Command { args, .. } => cumulative_len += 4 * (1 + args.len() as i32),
+            ParsedStatement::Command {
+                cmd: CommandName::Raw(cmd),
+                arg0: Some(arg0),
+                args,
+            } => {
+                if *cmd != 0xFFFF {
+                    cumulative_len += 4 * (1 + args.len() as i32);
+                } else if *arg0 == 0 {
+                    cumulative_len += args.len() as i32
+                        + if args.len() % 4 != 0 {
+                            4 - args.len() as i32 % 4
+                        } else {
+                            0
+                        };
+                } else if *arg0 == 1 {
+                    cumulative_len += args.len() as i32 * 4;
+                } else {
+                    unreachable!();
+                }
+            }
+            _ => unreachable!(),
         }
     }
     None

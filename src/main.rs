@@ -22,12 +22,12 @@ enum Commands {
     },
 }
 
-fn main() -> Result<(), ()> {
+fn main() -> Result<(), i32> {
     match run() {
         Ok(_) => Ok(()),
         Err(e) => {
             println!("Error: {}", e);
-            Err(())
+            Err(1)
         }
     }
 }

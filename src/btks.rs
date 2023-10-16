@@ -115,14 +115,11 @@ impl BTKS {
                     let ann = u32::read_from(f, ByteOrder::LittleEndian)?;
                     let anncode = ann & 0xFF;
                     let ann_arg = (ann & 0xFFFFFF) >> 8;
-                    if anncode == 0 {
-                        ptr_args.push(ann_arg)
-                    } else if anncode == 1 || anncode == 2 {
-                        str_args.push(ann_arg)
-                    } else if anncode == 3 {
-                        todo!();
-                    } else {
-                        unreachable!()
+                    match anncode {
+                        0 => ptr_args.push(ann_arg),
+                        1 | 2 => str_args.push(ann_arg),
+                        3 => todo!(),
+                        _ => unreachable!(),
                     }
                 }
                 cmd = u32::read_from(f, ByteOrder::LittleEndian)?;
