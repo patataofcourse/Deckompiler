@@ -106,6 +106,7 @@ impl BTKS {
                 // 0xFFFFFFFE (-2) indicates start of string data
                 break;
             }
+            //TODO: manage bytes argument annotation
             let mut str_args = vec![]; //strings and tickflow pointers have to be stored separately
             let mut ptr_args = vec![]; //because they're managed differently in btks
             if cmd == 0xFFFFFFFF {
@@ -118,7 +119,7 @@ impl BTKS {
                     match anncode {
                         0 => ptr_args.push(ann_arg),
                         1 | 2 => str_args.push(ann_arg),
-                        3 => todo!(),
+                        3 => todo!(), // how even do i do this....
                         _ => unreachable!(),
                     }
                 }
