@@ -10,7 +10,7 @@ license-file = "LICENSE.md"
 [dependencies]
 bytestream = "0.4"
 clap = { version = "4.0", features = ["derive"] }
-tickflow-parse = { git = "https://github.com/patataofcourse/tickflow-rs", branch = "compiler" }
+tickflow-parse = { git = "https://github.com/patataofcourse/tickflow-rs"}
 
 [[bin]]
 name = "c00"

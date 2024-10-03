@@ -1,7 +1,7 @@
 use bytestream::{ByteOrder::LittleEndian as LE, StreamWriter};
 use std::{
     fs::File,
-    io::{Seek, Write},
+    io::Write,
     path::{Path, PathBuf},
 };
 use tickflow_parse::old::{parse_from_text, CommandName, Context, ParsedStatement, ParsedValue};
@@ -216,7 +216,7 @@ fn get_pos_of_label(cmds: &[ParsedStatement], name: &str) -> Option<i32> {
     let mut cumulative_len = 0;
     for statement in cmds {
         match statement {
-            ParsedStatement::Label(c) => {
+            ParsedStatement::Label(c, _) => {
                 if c == name {
                     return Some(cumulative_len);
                 }
