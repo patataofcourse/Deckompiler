@@ -20,7 +20,7 @@ jobs:
       run: cargo build --verbose 
     - name: Run tests
       run: cargo test --verbose
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v3
       with:
         name: Deckompiler-linux
         path: ${{runner.workspace}}/Deckompiler/target/debug/deckompiler
@@ -34,7 +34,7 @@ jobs:
       run: cargo build --verbose 
     - name: Run tests
       run: cargo test --verbose
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v3
       with:
         name: Deckompiler-windows
         path: ${{runner.workspace}}/Deckompiler/target/debug/deckompiler.exe
@@ -48,7 +48,7 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v3
       with:
         name: Deckompiler-mac
         path: ${{runner.workspace}}/Deckompiler/target/debug/deckompiler

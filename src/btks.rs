@@ -183,8 +183,7 @@ impl BTKS {
                 f.read_to_string(&mut tempo_data)?;
                 out.push(match Tempo::from_tickompiler_file(tempo_data) {
                     Some(c) => c,
-                    None => Err(io::Error::new(
-                        io::ErrorKind::Other,
+                    None => Err(io::Error::other(
                         format!("Couldn't open tempo file '{}'", path.to_str().unwrap()),
                     ))?,
                 })

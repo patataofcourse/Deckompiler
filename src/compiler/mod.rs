@@ -18,8 +18,7 @@ pub fn compile_file(
     out: impl AsRef<Path>,
     out_filetype: CompiledFileType,
 ) -> tickflow_parse::Result<()> {
-    let cwd = in_.as_ref().parent().ok_or(std::io::Error::new(
-        std::io::ErrorKind::Other,
+    let cwd = in_.as_ref().parent().ok_or(std::io::Error::other(
         "invalid path for a file",
     ))?;
     let fname = in_
@@ -54,8 +53,7 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
         let (cmd, arg0, args) = match cmd {
             CommandName::Raw(c) => (c as u16, arg0.unwrap_or(0), args.clone()),
             CommandName::Named(c) if (*c == "bytes" || *c == "int") && arg0.unwrap_or(0) != 0 => {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                Err(std::io::Error::other(
                     "bytes/int commands don't take an arg0",
                 ))?
             }
@@ -111,8 +109,7 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
         let cmd = *cmd as u16;
 
         if args.len() > 15 {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            Err(std::io::Error::other(
                 "too many arguments given to a command",
             ))?
         }
@@ -126,8 +123,7 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
                     ann.write_to(&mut out, LE)?;
                     for arg in args {
                         let ParsedValue::Integer(arg) = arg else {
-                            Err(std::io::Error::new(
-                                std::io::ErrorKind::Other,
+                            Err(std::io::Error::other(
                                 "bytes args must be ints",
                             ))?
                         };
@@ -144,8 +140,7 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
                     ann.write_to(&mut out, LE)?;
                     for arg in args {
                         let ParsedValue::Integer(arg) = arg else {
-                            Err(std::io::Error::new(
-                                std::io::ErrorKind::Other,
+                            Err(std::io::Error::other(
                                 "int args must be ints",
                             ))?
                         };
@@ -166,8 +161,7 @@ fn to_btkm(mut out: File, cmds: Context) -> std::io::Result<()> {
                 tickflow_parse::old::ParsedValue::Label(lab) => {
                     arg_anns.push((i as u32) << 8);
                     parsed_args.push(get_pos_of_label(&resolved_cmds, lab).ok_or(
-                        std::io::Error::new(
-                            std::io::ErrorKind::Other,
+                        std::io::Error::other(
                             format!("Could not find label {lab}"),
                         ),
                     )?)

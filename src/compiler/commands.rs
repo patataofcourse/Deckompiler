@@ -219,8 +219,7 @@ pub enum ResolveError {
 
 impl From<ResolveError> for std::io::Error {
     fn from(value: ResolveError) -> Self {
-        Self::new(
-            std::io::ErrorKind::Other,
+        Self::other(
             match value {
                 ResolveError::WrongArgCount { cmd, expected, got } => format!(
                     "Command {cmd} takes {}-{} arguments, but {got} were given",
